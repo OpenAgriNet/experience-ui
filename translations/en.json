@@ -304,23 +304,6 @@
     "submit": "Analyze & Submit",
     "cancel": "Cancel"
   },
-  "notifications": {
-    "title": "Notifications",
-    "noNotificationsTitle": "No notifications available",
-    "noNotificationsBody": "You're all caught up. Check back later for updates.",
-    "noLocationTitle": "No weather notifications yet",
-    "noLocationBody": "Allow location access to load weather alerts for your area.",
-    "tooltip": "Tap here to see your latest notifications",
-    "markAllRead": "Mark all as read",
-    "wasHelpful": "Was this helpful?",
-    "feedbackLiked": "Thanks for your feedback!",
-    "feedbackDisliked": "Thanks, we'll improve!",
-    "yes": "Yes",
-    "no": "No",
-    "yourArea": "Your area",
-    "kmAway": "~[km] km away",
-    "pleaseNote": "Please note"
-  },
   "ticker": {
     "live": "LIVE",
     "announcements": "Announcements",
