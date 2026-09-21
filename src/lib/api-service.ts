@@ -1,6 +1,16 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { environment } from '@/lib/config/environment';
 import { getBrowserInfo, getFingerprintId } from '@/lib/utils';
+import {
+  STUBS_ENABLED,
+  stubFetchAuthToken,
+  stubGetSuggestions,
+  stubGetTranscript,
+  stubSendUserQuery,
+  stubTranscribeAudio,
+  stubUploadImage,
+  stubVoid,
+} from '@/lib/api-stubs';
 
 export interface LocationData {
   latitude: number;
@@ -261,6 +271,10 @@ class ApiService {
     onResponseStarted?: () => void
   ): Promise<ChatResponse> {
     try {
+      if (STUBS_ENABLED) {
+        return await stubSendUserQuery(msg, onStreamData, onResponseStarted);
+      }
+
       await this.refreshAuthTokenIfExpiredOrMissing();
       if (!this.validateAuth()) {
         return { response: "Authentication error", status: "error" };
@@ -386,6 +400,10 @@ class ApiService {
 
   async uploadImage(imageFile: File): Promise<ImageUploadResponse> {
     try {
+      if (STUBS_ENABLED) {
+        return await stubUploadImage(imageFile);
+      }
+
       await this.refreshAuthTokenIfExpiredOrMissing();
       if (!this.validateAuth()) {
         throw new Error("Authentication error");
@@ -449,6 +467,10 @@ class ApiService {
 
   async getSuggestions(session: string, targetLang: string = 'mr'): Promise<SuggestionItem[]> {
     try {
+      if (STUBS_ENABLED) {
+        return await stubGetSuggestions();
+      }
+
       await this.refreshAuthTokenIfExpiredOrMissing();
       if (!this.validateAuth()) {
         return [];
@@ -481,6 +503,10 @@ class ApiService {
     lang_code: string
   ): Promise<TranscriptionResponse> {
     try {
+      if (STUBS_ENABLED) {
+        return await stubTranscribeAudio();
+      }
+
       await this.refreshAuthTokenIfExpiredOrMissing();
       if (!this.validateAuth()) {
         return { text: "", lang_code: "", status: "error" };
@@ -506,6 +532,10 @@ class ApiService {
   }
 
   async getTranscript(sessionId: string, text: string, targetLang: string): Promise<AxiosResponse<TTSResponse>> {
+    if (STUBS_ENABLED) {
+      return (await stubGetTranscript(sessionId)) as AxiosResponse<TTSResponse>;
+    }
+
     await this.refreshAuthTokenIfExpiredOrMissing();
     if (!this.validateAuth()) {
       return Promise.reject(new Error("Authentication required"));
@@ -596,6 +626,8 @@ class ApiService {
   }
 
   async submitTelemetryFeedback(payload: TelemetryFeedbackPayload): Promise<void> {
+    if (STUBS_ENABLED) return stubVoid('POST /api/telemetry/feedback', payload);
+
     await this.refreshAuthTokenIfExpiredOrMissing();
     if (!this.validateAuth()) return;
 
@@ -605,6 +637,8 @@ class ApiService {
   }
 
   async submitTelemetryError(payload: TelemetryErrorPayload): Promise<void> {
+    if (STUBS_ENABLED) return stubVoid('POST /api/telemetry/error', payload);
+
     await this.refreshAuthTokenIfExpiredOrMissing();
     if (!this.validateAuth()) return;
 
@@ -619,6 +653,8 @@ class ApiService {
 
   private async submitUiTelemetryEvent(event: Omit<UiTelemetryEvent, "time"> & { time?: string }): Promise<void> {
     try {
+      if (STUBS_ENABLED) return await stubVoid('POST /api/telemetry/events', event);
+
       await this.refreshAuthTokenIfExpiredOrMissing();
       if (!this.validateAuth()) return;
 
@@ -644,6 +680,10 @@ class ApiService {
 
   async fetchAuthToken(metadata: string, fingerprintId?: string | null): Promise<string> {
     try {
+      if (STUBS_ENABLED) {
+        return await stubFetchAuthToken();
+      }
+
       // Don't use authentication headers for this call as we're getting the token
       const response = await axios.post<AuthResponse>(
         `${this.apiUrl}/api/token`,

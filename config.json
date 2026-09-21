@@ -1,4 +1,8 @@
 {
+  "stubs": {
+    "enabled": true,
+    "skipJwtVerification": true
+  },
   "theme": {
     "fonts": {
       "family": "Poppins",

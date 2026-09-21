@@ -55,8 +55,14 @@ bun dev          # http://localhost:3000
 ```
 
 No environment variables are required to boot. The app calls `/api/*` on its
-own origin, so a local backend is wired through the Vite dev proxy rather than
-configuration — see `vite.config.ts`.
+own origin.
+
+There is no Experience API yet, so the client ships with a stub layer turned on
+(`stubs.enabled` in `config.json`). With it on, every endpoint returns canned
+data, nothing leaves the browser, and the chat works end to end — each reply is
+labelled as stubbed so fabricated agricultural advice cannot be mistaken for
+real. Set `stubs.enabled` to `false` to talk to a real backend. See
+[`src/lib/api-stubs.ts`](src/lib/api-stubs.ts).
 
 ## Documentation
 
