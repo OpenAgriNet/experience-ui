@@ -10,57 +10,12 @@ import {
 	type Suggestion
 } from "@/components/screens-component/chat-screen/api/suggestions-api";
 import apiService from "@/lib/api-service";
-import { getFingerprintId } from "@/lib/utils";
 import { shuffle, randomPick } from "@/lib/qa-utils";
 import type { ToastType } from "@/components/screens-component/chat-screen/components/toast";
 import { environment } from "@/lib/config/environment";
 import { neutralizeHtmlMarkup } from "@/lib/security/html";
 
-export type ApiNotification = {
-	notification_id: string;
-	type: string;
-	priority: "HIGH" | "MEDIUM" | "LOW";
-	valid_from: string;
-	valid_to: string;
-	created_at: string;
-	content: { title: string; body: string };
-	location: {
-		subdistrict_name: string;
-		district_name: string;
-		state_name: string;
-		distance_km?: number;
-	} | null;
-	metadata: {
-		source: string;
-		template: string;
-		unique_id_iitm: string;
-		unique_id_pm_kisan: number;
-	};
-};
 
-export const SEEN_NOTIFICATIONS_KEY = "seen_notification_ids";
-
-export type PxDWeatherRecord = {
-	unique_id_pm_kisan: number;
-	unique_id_iitm: number;
-	subdistrict_code: number;
-	subdistrict_name: string;
-	district_code: number;
-	district_name: string;
-	state_code: number;
-	state_name: string;
-	lang_abb: string;
-	forecast_message: string;
-	template_abbreviation: string;
-	Lat: number;
-	Lon: number;
-};
-
-export type WeatherForecastMatch = PxDWeatherRecord & {
-	distanceKm: number;
-	/** True local matches (ST_DWithin-style). False = KNN fallback when user is outside covered lat/lon extent. */
-	isWithinSearchRadius: boolean;
-};
 
 export type QuickAction = {
 	id: string;
@@ -128,11 +83,6 @@ type ChatStore = {
 	toast: { message: string; type: ToastType } | null;
 	setToast: (toast: { message: string; type: ToastType } | null) => void;
 	fetchLocation: (t?: any, options?: FetchLocationOptions) => Promise<void>;
-	weatherForecastMatches: WeatherForecastMatch[];
-	notifications: ApiNotification[];
-	isFetchingNotifications: boolean;
-	fetchNotifications: () => Promise<void>;
-	markNotificationRead: (id: string) => void;
 };
 const quickActionSeeds: QuickAction[] = [
 	{
@@ -341,9 +291,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 	toast: null,
 	currentlyPlayingId: null,
 	ttsStatus: "stopped",
-	weatherForecastMatches: [],
-	notifications: [],
-	isFetchingNotifications: false,
 
 	setToast: (toast) => set({ toast }),
 	initializeSession: async (_user) => {
@@ -402,7 +349,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 					}
 					hasResolvedLocationAttempt = true;
 					locationFetchPromise = null;
-					void get().fetchNotifications();
 					resolve();
 				},
 				(error) => {
@@ -448,84 +394,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 		return locationFetchPromise;
 	},
 
-	fetchNotifications: async () => {
-		if (get().isFetchingNotifications) return;
-		const locationRaw = localStorage.getItem("user_location");
-		if (!locationRaw) return;
-
-		set({ isFetchingNotifications: true });
-
-		let latitude: number;
-		let longitude: number;
-		try {
-			({ latitude, longitude } = JSON.parse(locationRaw));
-		} catch {
-			set({ isFetchingNotifications: false });
-			return;
-		}
-
-		let visitor_id = "unknown";
-		try {
-			visitor_id = (await getFingerprintId()) || "unknown";
-		} catch {
-			// Keep fallback visitor id.
-		}
-
-		const lang = localStorage.getItem("app_language") || "en";
-		const seenRaw = localStorage.getItem(SEEN_NOTIFICATIONS_KEY);
-		const seen_message_ids: string[] = seenRaw ? JSON.parse(seenRaw) : [];
-
-		const body: Record<string, unknown> = { visitor_id, lat: latitude, lon: longitude, lang };
-		if (seen_message_ids.length > 0) {
-			body.seen_message_ids = seen_message_ids;
-		}
-
-		try {
-			const res = await fetch(`${environment.notificationApiUrl}/notification`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-
-			let responseBody: unknown = null;
-			try {
-				responseBody = await res.clone().json();
-			} catch {
-				try {
-					responseBody = await res.clone().text();
-				} catch {
-					responseBody = null;
-				}
-			}
-
-			apiService.trackUiTelemetryEvent({
-				event_name: "notification_api_response",
-				category: "notification",
-				metadata: {
-					status_code: res.status,
-					success: res.ok,
-					response: responseBody
-				}
-			});
-			if (!res.ok) return;
-			const data = responseBody as { success: boolean; notifications: ApiNotification[] };
-			if (data.success && Array.isArray(data.notifications)) {
-				set({ notifications: data.notifications });
-			}
-		} catch {
-			// Keep previous notifications on request failure.
-		} finally {
-			set({ isFetchingNotifications: false });
-		}
-	},
-
-	markNotificationRead: (id: string) => {
-		const seenRaw = localStorage.getItem(SEEN_NOTIFICATIONS_KEY);
-		const seen: string[] = seenRaw ? JSON.parse(seenRaw) : [];
-		if (!seen.includes(id)) {
-			localStorage.setItem(SEEN_NOTIFICATIONS_KEY, JSON.stringify([...seen, id]));
-		}
-	},
 
 	setIsTranscribing: (value) => set(() => ({ isTranscribing: value })),
 	setSuggestions: (suggestions) => set({ suggestions }),

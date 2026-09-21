@@ -305,23 +305,6 @@
     "submit": "विश्लेषण करें और भेजें",
     "cancel": "रद्द करें"
   },
-  "notifications": {
-    "title": "सूचनाएं",
-    "noNotificationsTitle": "कोई सूचना उपलब्ध नहीं",
-    "noNotificationsBody": "आप सब देख चुके हैं। बाद में अपडेट के लिए वापस आएं।",
-    "noLocationTitle": "अभी कोई मौसम सूचना नहीं",
-    "noLocationBody": "अपने क्षेत्र के मौसम अलर्ट के लिए स्थान अनुमति दें।",
-    "tooltip": "अपनी नवीनतम सूचनाएं देखने के लिए यहाँ टैप करें",
-    "markAllRead": "सभी पढ़ा हुआ मार्क करें",
-    "wasHelpful": "क्या यह उपयोगी था?",
-    "feedbackLiked": "आपकी प्रतिक्रिया के लिए धन्यवाद!",
-    "feedbackDisliked": "धन्यवाद, हम सुधार करेंगे!",
-    "yes": "हाँ",
-    "no": "नहीं",
-    "yourArea": "आपका क्षेत्र",
-    "kmAway": "~[km] किमी दूर",
-    "pleaseNote": "कृपया ध्यान दें"
-  },
   "ticker": {
     "live": "लाइव",
     "announcements": "घोषणाएं",

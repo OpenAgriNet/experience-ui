@@ -59,7 +59,6 @@ function ChatLayout() {
 				latitude: cachedLocation.latitude,
 				longitude: cachedLocation.longitude,
 			});
-			void useChatStore.getState().fetchNotifications();
 		}
 
 		navigator.permissions?.query({ name: "geolocation" }).then((result) => {
