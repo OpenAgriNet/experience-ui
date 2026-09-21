@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode, useState, useEffect, useCallback 
 import { importSPKI, jwtVerify, type JWTPayload } from 'jose';
 import apiService from '@/lib/api-service';
 import { getBrowserInfo, getFingerprintId } from '@/lib/utils';
+import { SKIP_JWT_VERIFICATION, decodeJwtPayload } from '@/lib/api-stubs';
 
 // Constants
 const JWT_STORAGE_KEY = 'auth_jwt';
@@ -314,6 +315,14 @@ hwIDAQAB
 
   // Function to validate JWT and extract payload
   async function validateJWT(token: string, key: CryptoKey): Promise<{ isValid: boolean; payload: JWTPayload | null }> {
+    // Stub mode: the local token carries a fake signature, so decode the claims
+    // instead of verifying them. Never reached unless stubs.skipJwtVerification
+    // is on in config.json.
+    if (SKIP_JWT_VERIFICATION) {
+      const payload = decodeJwtPayload(token) as JWTPayload | null;
+      return { isValid: payload !== null, payload };
+    }
+
     try {
       const { payload } = await jwtVerify(token, key);
       return { isValid: true, payload };
