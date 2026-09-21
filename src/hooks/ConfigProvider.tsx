@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect } from "react";
-import config from "../../config.json";
+import { getConfig, type AppConfig } from "@/lib/config/runtime-config";
 import { useThemeStore } from "@/hooks/store/theme";
 import { THEMES } from "@/components/screens-component/chat-screen/config";
 
-type Config = typeof config;
+type Config = AppConfig;
 
 interface ConfigContextType {
   config: Config;
@@ -13,6 +13,7 @@ const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
 export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { theme } = useThemeStore();
+  const config = getConfig();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -51,7 +52,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (config.theme.fonts) {
       root.style.setProperty('--font-family', config.theme.fonts.family);
     }
-  }, [theme]);
+  }, [theme, config]);
 
   return (
     <ConfigContext.Provider value={{ config }}>

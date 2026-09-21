@@ -1,5 +1,6 @@
-import rootConfigData from "../../../../config.json";
-const rootConfig = rootConfigData as any;
+import { getConfig } from "@/lib/config/runtime-config";
+
+const rootConfig = getConfig() as any;
 
 // ============================================================================
 // LANGUAGE CONFIGURATION
