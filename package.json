@@ -1,7 +1,12 @@
 {
-	"name": "react-boilerplate",
-	"private": true,
+	"name": "experience-ui",
+	"description": "Reference Experience Layer web client for OpenAgriNet",
 	"version": "0.0.0",
+	"private": true,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/OpenAgriNet/experience-ui.git"
+	},
 	"type": "module",
 	"scripts": {
 		"dev": "vite --host 0.0.0.0",
