@@ -1,9 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { environment } from '@/lib/config/environment';
-import { getBrowserInfo, getFingerprintId } from '@/lib/utils';
 import {
   stubsEnabled,
-  stubFetchAuthToken,
   stubGetSuggestions,
   stubGetTranscript,
   stubSendUserQuery,
@@ -39,10 +37,6 @@ interface TTSResponse {
   session_id: string;
 }
 
-interface AuthResponse {
-  token: string;
-}
-
 interface TelemetryFeedbackPayload {
   qid: string;
   session_id: string;
@@ -76,7 +70,6 @@ const CHAT_QID_HEADER = "X-QID";
 const SSE_KEEPALIVE_MARKER = "SSE_KEEPALIVE";
 
 // Constants
-const JWT_STORAGE_KEY = 'auth_jwt';
 
 const stripSseKeepAliveMarkers = (chunk: string): string =>
   chunk
@@ -84,184 +77,25 @@ const stripSseKeepAliveMarkers = (chunk: string): string =>
     .filter((line) => line.trim() !== SSE_KEEPALIVE_MARKER)
     .join('\n');
 
-const getTokenExpiryFromExp = (token: string): number | null => {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-
-    const payloadPart = parts[1];
-    if (!payloadPart) return null;
-
-    const payloadBase64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-    const paddedPayload = payloadBase64.padEnd(Math.ceil(payloadBase64.length / 4) * 4, '=');
-    const payload = JSON.parse(atob(paddedPayload)) as { exp?: number };
-
-    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-};
 
 class ApiService {
   private apiUrl: string = environment.apiUrl;
   private locationData: LocationData | null = null;
   private currentSessionId: string | null = null;
   private axiosInstance: AxiosInstance;
-  private authToken: string | null = null;
-  private refreshTokenPromise: Promise<string | null> | null = null;
 
   constructor() {
-    this.authToken = this.getAuthToken();
     this.axiosInstance = axios.create({
       baseURL: this.apiUrl,
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': this.authToken ? `Bearer ${this.authToken}` : 'NA'
+        'Content-Type': 'application/json'
       }
     });
 
-    // Add response interceptor for 401 errors
-    this.axiosInstance.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        if (error.response?.status === 401 && error.config) {
-          const originalRequest = error.config as any;
-          if (!originalRequest._retry) {
-            originalRequest._retry = true;
-            const refreshedToken = await this.performTokenRefresh();
-            if (refreshedToken) {
-              originalRequest.headers = {
-                ...(originalRequest.headers || {}),
-                Authorization: `Bearer ${refreshedToken}`,
-              };
-              return this.axiosInstance.request(originalRequest);
-            }
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
   }
 
-  private getAuthToken(): string | null {
-    const keys = [JWT_STORAGE_KEY, 'accessToken', 'token'];
-    
-    for (const key of keys) {
-      const data = localStorage.getItem(key);
-      if (!data) continue;
-
-      // Try to parse as JSON first (our new format)
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed && typeof parsed === 'object') {
-          // It's JSON. Check for token property.
-          const token = parsed.token || parsed.access_token || parsed.accessToken;
-          if (token) {
-            const now = new Date().getTime();
-            // Only expire if we have a valid future expiry date set
-            if (parsed.expiry && parsed.expiry > 0 && now > parsed.expiry) {
-              localStorage.removeItem(key);
-              continue;
-            }
-            return token;
-          }
-        }
-      } catch (e) {
-        console.error(e);
-        // Not JSON, assume it's a plain token string
-        if (data.split('.').length === 3) {
-          return data;
-        }
-      }
-    }
-    return null;
-  }
-
-  private refreshAuthToken(): void {
-    this.authToken = this.getAuthToken();
-    if (this.authToken) {
-      this.axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${this.authToken}`;
-    } else {
-      this.axiosInstance.defaults.headers.common['Authorization'] = 'NA';
-      // Don't redirect here - let the 401 interceptor handle it when actual API calls fail
-    }
-  }
-
-  private async performTokenRefresh(): Promise<string | null> {
-    if (this.refreshTokenPromise) {
-      return this.refreshTokenPromise;
-    }
-
-    this.refreshTokenPromise = (async () => {
-      try {
-        const metadata = getBrowserInfo();
-        const fingerprintId = await getFingerprintId();
-        const newToken = await this.fetchAuthToken(metadata, fingerprintId);
-        const expiry = getTokenExpiryFromExp(newToken);
-        if (!expiry) {
-          throw new Error('JWT exp claim missing; refusing to store token with synthetic expiry');
-        }
-
-        localStorage.setItem(
-          JWT_STORAGE_KEY,
-          JSON.stringify({
-            token: newToken,
-            expiry,
-          })
-        );
-
-        this.authToken = newToken;
-        this.axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-        return newToken;
-      } catch (error) {
-        console.error('Failed to refresh auth token:', error);
-        this.authToken = null;
-        this.axiosInstance.defaults.headers.common['Authorization'] = 'NA';
-        return null;
-      } finally {
-        this.refreshTokenPromise = null;
-      }
-    })();
-
-    return this.refreshTokenPromise;
-  }
-
-  private async refreshAuthTokenIfExpiredOrMissing(): Promise<void> {
-    this.refreshAuthToken();
-    if (this.authToken) return;
-
-    await this.performTokenRefresh();
-  }
   
-  // No longer redirecting to error page
-  // private redirectToErrorPage(): void {
-  //   // Check if we're in a browser environment and not already on error page
-  //   if (typeof window !== 'undefined' && !window.location.pathname.includes('/error')) {
-  //     window.location.href = '/error?reason=auth';
-  //   }
-  // }
   
-  updateAuthToken(): void {
-    this.refreshAuthToken();
-  }
-
-  private getAuthHeaders(): Record<string, string> {
-    this.refreshAuthToken();
-    return {
-      'Authorization': this.authToken ? `Bearer ${this.authToken}` : 'NA'
-    };
-  }
-
-  private validateAuth(): boolean {
-    // If we have no token, alert but don't force redirect here
-    // Let the calling component or an interceptor handle navigation
-    if (!this.authToken) {
-      console.error("Authentication token missing in ApiService");
-      return false;
-    }
-    return true;
-  }
-
   async sendUserQuery(
     msg: string,
     session: string,
@@ -275,10 +109,6 @@ class ApiService {
         return await stubSendUserQuery(msg, onStreamData, onResponseStarted);
       }
 
-      await this.refreshAuthTokenIfExpiredOrMissing();
-      if (!this.validateAuth()) {
-        return { response: "Authentication error", status: "error" };
-      }
       
       const params = {
         session_id: session,
@@ -291,35 +121,15 @@ class ApiService {
         })
       };
 
-      const headers = this.getAuthHeaders();
-
       if (onStreamData) {
         // Handle streaming response
-        let response = await fetch(`${this.apiUrl}/api/chat/?${new URLSearchParams(params)}`, {
-          method: 'GET',
-          headers: headers          
+        const response = await fetch(`${this.apiUrl}/api/chat/?${new URLSearchParams(params)}`, {
+          method: 'GET'
         });
 
-        if (response.status === 401) {
-          const refreshedToken = await this.performTokenRefresh();
-          if (refreshedToken) {
-            response = await fetch(`${this.apiUrl}/api/chat/?${new URLSearchParams(params)}`, {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${refreshedToken}`,
-              },
-            });
-          }
-        }
 
         if (!response.ok) {
           const responseQid = response.headers.get(CHAT_QID_HEADER) || undefined;
-          if (response.status === 401) {
-            const error = new Error('Unauthorized');
-            (error as any).status = 401;
-            if (responseQid) (error as any).qid = responseQid;
-            throw error;
-          }
           if (response.status === 429) {
             const error = new Error('Rate limit exceeded');
             (error as any).status = 429;
@@ -363,7 +173,6 @@ class ApiService {
         // Regular non-streaming request
         const config = {
           params,
-          headers: this.getAuthHeaders()
         };
         const response = await this.axiosInstance.get('/api/chat/', config);
         const responseQid = response.headers[CHAT_QID_HEADER.toLowerCase()] as string | undefined;
@@ -404,37 +213,16 @@ class ApiService {
         return await stubUploadImage(imageFile);
       }
 
-      await this.refreshAuthTokenIfExpiredOrMissing();
-      if (!this.validateAuth()) {
-        throw new Error("Authentication error");
-      }
 
       const formData = new FormData();
       formData.append('image', imageFile);
 
-      const headers = this.getAuthHeaders();
       const response = await fetch(`${this.apiUrl}/api/image/upload`, {
         method: 'POST',
-        headers: headers,
         body: formData
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          const refreshedToken = await this.performTokenRefresh();
-          if (refreshedToken) {
-            const retryResponse = await fetch(`${this.apiUrl}/api/image/upload`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${refreshedToken}` },
-              body: formData
-            });
-            if (!retryResponse.ok) {
-              throw new Error(`Upload failed: ${retryResponse.status}`);
-            }
-            const retryPayload = await retryResponse.json();
-            return this.parseImageUploadResponse(retryPayload);
-          }
-        }
         throw new Error(`Upload failed: ${response.status}`);
       }
 
@@ -471,10 +259,6 @@ class ApiService {
         return await stubGetSuggestions();
       }
 
-      await this.refreshAuthTokenIfExpiredOrMissing();
-      if (!this.validateAuth()) {
-        return [];
-      }
       
       const params = {
         session_id: session,
@@ -483,7 +267,6 @@ class ApiService {
 
       const config = {
         params,
-        headers: this.getAuthHeaders()
       };
 
       const response = await this.axiosInstance.get('/api/suggest/', config);
@@ -507,10 +290,6 @@ class ApiService {
         return await stubTranscribeAudio();
       }
 
-      await this.refreshAuthTokenIfExpiredOrMissing();
-      if (!this.validateAuth()) {
-        return { text: "", lang_code: "", status: "error" };
-      }
       
       const payload = {
         audio_content: audioBase64,
@@ -520,7 +299,6 @@ class ApiService {
       };
 
       const config = {
-        headers: this.getAuthHeaders()
       };
 
       const response = await this.axiosInstance.post('/api/transcribe/', payload, config);
@@ -536,13 +314,8 @@ class ApiService {
       return (await stubGetTranscript(sessionId)) as AxiosResponse<TTSResponse>;
     }
 
-    await this.refreshAuthTokenIfExpiredOrMissing();
-    if (!this.validateAuth()) {
-      return Promise.reject(new Error("Authentication required"));
-    }
     
     const config = {
-      headers: this.getAuthHeaders(),
       timeout: 120000, // 120s timeout for TTS (can be slow on cold start)
     };
     
@@ -628,22 +401,16 @@ class ApiService {
   async submitTelemetryFeedback(payload: TelemetryFeedbackPayload): Promise<void> {
     if (stubsEnabled()) return stubVoid('POST /api/telemetry/feedback', payload);
 
-    await this.refreshAuthTokenIfExpiredOrMissing();
-    if (!this.validateAuth()) return;
 
     await this.axiosInstance.post('/api/telemetry/feedback', payload, {
-      headers: this.getAuthHeaders()
     });
   }
 
   async submitTelemetryError(payload: TelemetryErrorPayload): Promise<void> {
     if (stubsEnabled()) return stubVoid('POST /api/telemetry/error', payload);
 
-    await this.refreshAuthTokenIfExpiredOrMissing();
-    if (!this.validateAuth()) return;
 
     await this.axiosInstance.post('/api/telemetry/error', payload, {
-      headers: this.getAuthHeaders()
     });
   }
 
@@ -655,8 +422,6 @@ class ApiService {
     try {
       if (stubsEnabled()) return await stubVoid('POST /api/telemetry/events', event);
 
-      await this.refreshAuthTokenIfExpiredOrMissing();
-      if (!this.validateAuth()) return;
 
       const metadata = {
         ...(event.metadata || {}),
@@ -671,43 +436,12 @@ class ApiService {
       }];
 
       await this.axiosInstance.post('/api/telemetry/events', payload, {
-        headers: this.getAuthHeaders()
       });
     } catch {
       // UI telemetry must never block or surface errors to users.
     }
   }
 
-  async fetchAuthToken(metadata: string, fingerprintId?: string | null): Promise<string> {
-    try {
-      if (stubsEnabled()) {
-        return await stubFetchAuthToken();
-      }
-
-      // Don't use authentication headers for this call as we're getting the token
-      const response = await axios.post<AuthResponse>(
-        `${this.apiUrl}/api/token`,
-        {
-          metadata,
-          ...(fingerprintId && { fingerprint_id: fingerprintId }),
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.data && response.data.token) {
-        return response.data.token;
-      }
-
-      throw new Error("No token received from auth endpoint");
-    } catch (error) {
-      console.error("Error fetching auth token:", error);
-      throw error;
-    }
-  }
 }
 
 const apiService = new ApiService();

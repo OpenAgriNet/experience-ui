@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CHAT_ASSISTANT, CHAT_USER } from "../config";
 import { MessageRole } from "./bubbles/chat-types";
-import { useAuthStore } from "@/hooks/store/auth";
+import { useAuth } from "@/lib/auth";
 
 type MessageChromeProps = {
 	role: MessageRole;
@@ -18,7 +18,7 @@ const ROLE_META = {
 
 export function MessageChrome({ role, children, showLabel = true }: MessageChromeProps) {
 	const isUser = role === "user";
-	const user = useAuthStore((s) => s.user);
+	const { user } = useAuth();
 	const meta = ROLE_META[role] ?? CHAT_ASSISTANT;
 	
 	const getInitials = (username: string) => {
@@ -26,7 +26,7 @@ export function MessageChrome({ role, children, showLabel = true }: MessageChrom
 	};
 
 	const initials = isUser 
-		? getInitials(user?.username || user?.name || "User") 
+		? getInitials(user?.username ?? "User") 
 		: meta.name.slice(0, 1).toUpperCase();
 
 	if (isUser) {
@@ -35,7 +35,7 @@ export function MessageChrome({ role, children, showLabel = true }: MessageChrom
 				{/* User Header: Name and Avatar */}
 				{showLabel && (
 					<div className="flex items-center gap-2">
-						<span className="text-sm font-semibold text-[var(--primary)] text-foreground">{user?.username || user?.name || meta.name}</span>
+						<span className="text-sm font-semibold text-[var(--primary)] text-foreground">{user?.username ?? meta.name}</span>
 						<Avatar className="h-8 w-8 rounded-full border border-[var(--primary)] bg-indigo-50/50">
 							<AvatarFallback className="text-[var(--primary)] text-xs font-bold">{initials}</AvatarFallback>
 						</Avatar>

@@ -5,8 +5,7 @@
  * here is inert and the app talks to the real API exactly as before.
  *
  * This exists so the UI can be run with no backend — there is no Experience API
- * yet, and without stubs the client renders a lock screen because /api/token
- * never answers. It is a stepping stone to a real mock REST service: each
+ * yet. It is a stepping stone to a real mock REST service: each
  * function below mirrors one endpoint's response shape, so the bodies can be
  * lifted into an actual server later.
  *
@@ -44,14 +43,6 @@ export const stubsEnabled = (): boolean => {
   return enabled;
 };
 
-/**
- * Stub tokens carry a fake signature, so `jose.jwtVerify` would reject them.
- * Separate from stubsEnabled() so that verification can be kept on deliberately
- * while other endpoints are stubbed.
- */
-export const skipJwtVerification = (): boolean =>
-  stubsEnabled() && getConfig().stubs.skipJwtVerification !== false;
-
 /** Log every stubbed call so it's obvious nothing real is happening. */
 export const stubLog = (endpoint: string, detail?: unknown): void => {
   console.info(`[stub] ${endpoint}`, detail ?? '');
@@ -59,70 +50,7 @@ export const stubLog = (endpoint: string, detail?: unknown): void => {
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// --- JWT ---------------------------------------------------------------
-
-const base64UrlEncode = (value: string): string =>
-  btoa(unescape(encodeURIComponent(value)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-
-export const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
-  try {
-    const payloadPart = token.split('.')[1];
-    if (!payloadPart) return null;
-    const normalised = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalised.padEnd(Math.ceil(normalised.length / 4) * 4, '=');
-    return JSON.parse(atob(padded)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * A structurally valid JWT with a fake signature. It carries a real `exp` claim
- * so the app's expiry handling works, but it will NOT pass `jwtVerify` — stub
- * mode skips signature checks (see AuthContext.validateJWT).
- */
-export const makeStubJwt = (): string => {
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const payload = {
-    sub: 'stub-user-001',
-    name: 'Stub Farmer',
-    email: 'stub.farmer@example.com',
-    mobile: '9000000000',
-    role: 'farmer',
-    farmer_id: 'STUB-FARMER-001',
-    unique_id: 1001,
-    is_guest_user: false,
-    locations: [
-      {
-        location_type: 'registered_location',
-        district: 'Pune',
-        village: 'Wagholi',
-        taluka: 'Haveli',
-        lgd_code: '556123',
-      },
-    ],
-    iat: now,
-    exp: now + 24 * 60 * 60,
-  };
-  return [
-    base64UrlEncode(JSON.stringify(header)),
-    base64UrlEncode(JSON.stringify(payload)),
-    'stub-signature-not-verified',
-  ].join('.');
-};
-
 // --- Endpoint stubs ----------------------------------------------------
-
-/** POST /api/token */
-export const stubFetchAuthToken = async (): Promise<string> => {
-  stubLog('POST /api/token');
-  await delay(150);
-  return makeStubJwt();
-};
 
 const CHAT_REPLIES: string[] = [
   `### Wheat sowing advice

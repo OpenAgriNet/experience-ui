@@ -1,7 +1,6 @@
 {
   "stubs": {
-    "enabled": true,
-    "skipJwtVerification": true
+    "enabled": true
   },
   "theme": {
     "fonts": {

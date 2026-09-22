@@ -35,7 +35,6 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"eslint-config-prettier": "^10.1.8",
-		"jose": "^6.2.12",
 		"lottie-react": "^2.4.2",
 		"lucide-react": "^0.562.0",
 		"react": "^19.3.0",

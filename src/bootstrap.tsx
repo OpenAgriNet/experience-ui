@@ -16,7 +16,7 @@ import PageNotFound from "./pages/error/404";
 import DefaultError from "./pages/error/default-error";
 import { createRouteProgress } from "./config/route-progress";
 import { LanguageProvider } from "./components/LanguageProvider";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider } from "./lib/auth";
 import { ConfigProvider } from "./hooks/ConfigProvider";
 
 const routeProgress = createRouteProgress();
