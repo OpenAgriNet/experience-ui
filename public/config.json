@@ -5,8 +5,7 @@
   },
   "theme": {
     "fonts": {
-      "family": "Poppins",
-      "url": "/fonts/poppins.css"
+      "family": "Poppins"
     },
     "colors": {
       "primary": "#4343ff",
@@ -44,242 +43,69 @@
   },
   "icons": {
     "assistant": "/chatBotIcon.svg",
-    "user": "",
-    "language": "अ",
-    "settings": "Settings",
-    "bell": "Bell",
-    "chevronDown": "ChevronDown",
-    "microphone": "Mic",
-    "send": "Send",
-    "play": "Play",
-    "pause": "Pause",
-    "copy": "Copy",
-    "thumbsUp": "ThumbsUp",
-    "thumbsDown": "ThumbsDown"
+    "user": ""
   },
   "languages": [
-    { "code": "hi", "name": "हिंदी", "nativeName": "हिंदी", "icon": "अ" },
-    { "code": "en", "name": "English", "nativeName": "English", "icon": "अ" },
-    { "code": "bn", "name": "বাংলা", "nativeName": "বাংলা", "icon": "অ" },
-    { "code": "te", "name": "తెలుగు", "nativeName": "తెలుగు", "icon": "అ" },
-    { "code": "mr", "name": "मराठी", "nativeName": "मराठी", "icon": "अ" },
-    { "code": "ta", "name": "தமிழ்", "nativeName": "தமிழ்", "icon": "அ" },
-    { "code": "gu", "name": "ગુજરાતી", "nativeName": "ગુજરાતી", "icon": "અ" },
-    { "code": "kn", "name": "ಕನ್ನಡ", "nativeName": "ಕನ್ನಡ", "icon": "ಅ" },
-    { "code": "ml", "name": "മലയാളം", "nativeName": "മലയാളം", "icon": "അ" },
-    { "code": "as", "name": "অসমীয়া", "nativeName": "অসমীয়া", "icon": "অ" }
-  ],
-  "defaultLanguage": "hi",
-  "languageTexts": {
-    "en": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "hi",
+      "name": "हिंदी",
+      "nativeName": "हिंदी",
+      "icon": "अ"
     },
-    "hi": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "en",
+      "name": "English",
+      "nativeName": "English",
+      "icon": "अ"
     },
-    "mr": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "bn",
+      "name": "বাংলা",
+      "nativeName": "বাংলা",
+      "icon": "অ"
     },
-    "gu": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "te",
+      "name": "తెలుగు",
+      "nativeName": "తెలుగు",
+      "icon": "అ"
     },
-    "bn": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "mr",
+      "name": "मराठी",
+      "nativeName": "मराठी",
+      "icon": "अ"
     },
-    "te": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "ta",
+      "name": "தமிழ்",
+      "nativeName": "தமிழ்",
+      "icon": "அ"
     },
-    "ta": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "gu",
+      "name": "ગુજરાતી",
+      "nativeName": "ગુજરાતી",
+      "icon": "અ"
     },
-    "kn": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "kn",
+      "name": "ಕನ್ನಡ",
+      "nativeName": "ಕನ್ನಡ",
+      "icon": "ಅ"
     },
-    "ml": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "ml",
+      "name": "മലയാളം",
+      "nativeName": "മലയാളം",
+      "icon": "അ"
     },
-    "as": {
-      "chatDisclaimer": "AI-generated content. Please verify locally if required.",
-      "chatMicHint": "Tap the microphone button to ask your question",
-      "chatWelcomeName": "Bharat-VISTAAR",
-      "languageDialog": {
-        "title": "Change language",
-        "applyButton": "Apply"
-      },
-      "header": {
-        "appName": "Bharat-VISTAAR",
-        "settings": "Settings",
-        "profile": "Profile",
-        "clearChat": "Clear chat",
-        "block": "Block"
-      },
-      "chat": {
-        "placeholder": "Ask me anything...",
-        "listening": "Listening...",
-        "typing": "Typing..."
-      }
+    {
+      "code": "as",
+      "name": "অসমীয়া",
+      "nativeName": "অসমীয়া",
+      "icon": "অ"
     }
-  }
+  ],
+  "defaultLanguage": "hi"
 }

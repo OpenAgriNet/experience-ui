@@ -25,26 +25,15 @@ export const DEFAULT_LANGUAGE: LanguageCode = rootConfig.defaultLanguage as Lang
 // ============================================================================
 // CHAT CONFIGURATION
 // ============================================================================
-// CHAT CONFIGURATION
-// ============================================================================
 
 export const CHAT_ASSISTANT = {
 	name: "Bharati",
 	avatar: rootConfig.icons.assistant
 };
 
-export const APP_LOGO = rootConfig.icons.appLogo || rootConfig.icons.assistant;
-
 export const CHAT_USER = {
 	name: "",
 	avatar: rootConfig.icons.user
-};
-
-
-// Helper function to get text for current language
-// Deprecated: use useLanguage().t instead.
-export const getLanguageText = (languageCode: LanguageCode): any => {
-	return (rootConfig.languageTexts as any)[languageCode];
 };
 
 export type FAQItem = {
@@ -75,73 +64,4 @@ export const THEMES = {
 
 export type Theme = keyof typeof THEMES;
 
-// ============================================================================
-// ICON CONFIGURATION
-// ============================================================================
-
-export const ICONS = {
-	language: "अ",
-	settings: "Settings",
-	bell: "Bell",
-	user: "User",
-	chevronDown: "ChevronDown",
-	microphone: "Mic",
-	send: "Send",
-	play: "Play",
-	pause: "Pause",
-	copy: "Copy",
-	thumbsUp: "ThumbsUp",
-	thumbsDown: "ThumbsDown"
-} as const;
-
-// ============================================================================
-// FONT CONFIGURATION
-// ============================================================================
-
-export const FONTS = {
-	primary: "system-ui, -apple-system, sans-serif",
-	heading: "system-ui, -apple-system, sans-serif",
-	mono: "monospace",
-	sizes: {
-		xs: "0.75rem",
-		sm: "0.875rem",
-		base: "1rem",
-		lg: "1.125rem",
-		xl: "1.25rem",
-		"2xl": "1.5rem",
-		"3xl": "1.875rem"
-	}
-} as const;
-
-// ============================================================================
-// COLOR CONFIGURATION
-// ============================================================================
-
-export const COLORS = {
-	primary: {
-		main: "#06038D",
-		light: "#818CF8",
-		dark: "#312E81",
-		contrast: "#ffffff"
-	},
-	secondary: {
-		main: "#f3f4f6",
-		light: "#ffffff",
-		dark: "#e5e7eb",
-		contrast: "#000000"
-	},
-	accent: {
-		blue: "#3b82f6",
-		lightBlue: "#E0E7FF",
-		white: "#ffffff",
-		gray: "#6b7280",
-		lightGray: "#f9fafb"
-	},
-	status: {
-		success: "#22c55e",
-		error: "#ef4444",
-		warning: "#f59e0b",
-		info: "#3b82f6"
-	}
-} as const;
 
