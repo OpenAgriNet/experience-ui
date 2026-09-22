@@ -8,6 +8,7 @@
 		"url": "git+https://github.com/OpenAgriNet/experience-ui.git"
 	},
 	"type": "module",
+	"packageManager": "bun@1.4.2",
 	"scripts": {
 		"dev": "vite --host 0.0.0.0",
 		"build": "tsc -b && vite build",
