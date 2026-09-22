@@ -1,6 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { environment } from '@/lib/config/environment';
-import { authHeaders } from '@/lib/auth';
 import {
   stubsEnabled,
   stubGetSuggestions,
@@ -89,8 +88,7 @@ class ApiService {
     this.axiosInstance = axios.create({
       baseURL: this.apiUrl,
       headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders()
+        'Content-Type': 'application/json'
       }
     });
 
@@ -123,13 +121,10 @@ class ApiService {
         })
       };
 
-      const headers = authHeaders();
-
       if (onStreamData) {
         // Handle streaming response
         const response = await fetch(`${this.apiUrl}/api/chat/?${new URLSearchParams(params)}`, {
-          method: 'GET',
-          headers: headers          
+          method: 'GET'
         });
 
 
@@ -178,7 +173,6 @@ class ApiService {
         // Regular non-streaming request
         const config = {
           params,
-          headers: authHeaders()
         };
         const response = await this.axiosInstance.get('/api/chat/', config);
         const responseQid = response.headers[CHAT_QID_HEADER.toLowerCase()] as string | undefined;
@@ -223,10 +217,8 @@ class ApiService {
       const formData = new FormData();
       formData.append('image', imageFile);
 
-      const headers = authHeaders();
       const response = await fetch(`${this.apiUrl}/api/image/upload`, {
         method: 'POST',
-        headers: headers,
         body: formData
       });
 
@@ -275,7 +267,6 @@ class ApiService {
 
       const config = {
         params,
-        headers: authHeaders()
       };
 
       const response = await this.axiosInstance.get('/api/suggest/', config);
@@ -308,7 +299,6 @@ class ApiService {
       };
 
       const config = {
-        headers: authHeaders()
       };
 
       const response = await this.axiosInstance.post('/api/transcribe/', payload, config);
@@ -326,7 +316,6 @@ class ApiService {
 
     
     const config = {
-      headers: authHeaders(),
       timeout: 120000, // 120s timeout for TTS (can be slow on cold start)
     };
     
@@ -414,7 +403,6 @@ class ApiService {
 
 
     await this.axiosInstance.post('/api/telemetry/feedback', payload, {
-      headers: authHeaders()
     });
   }
 
@@ -423,7 +411,6 @@ class ApiService {
 
 
     await this.axiosInstance.post('/api/telemetry/error', payload, {
-      headers: authHeaders()
     });
   }
 
@@ -449,7 +436,6 @@ class ApiService {
       }];
 
       await this.axiosInstance.post('/api/telemetry/events', payload, {
-        headers: authHeaders()
       });
     } catch {
       // UI telemetry must never block or surface errors to users.

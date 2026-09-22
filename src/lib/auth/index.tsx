@@ -4,14 +4,20 @@ import { createContext, useContext, type ReactNode } from "react";
  * Identity seam — the only place that decides who the user is.
  *
  * The Experience Layer has no authentication. This returns a fixed local user
- * so the client has someone to render and a session to attach to requests.
- * Nothing here is a security control, and nothing here reaches a network.
+ * so the client has someone to render. Nothing here is a security control,
+ * and nothing here reaches a network.
  *
  * When authentication arrives, implement it here. The rest of the client
- * depends on this contract and on nothing about how it is satisfied:
+ * depends on `useAuth()` returning `{ user, isLoading }`, and on nothing
+ * about how that is decided.
  *
- *   useAuth()     -> { user, isLoading }
- *   authHeaders() -> headers attached to every API request
+ * How a credential reaches the API is deliberately not decided here. A bearer
+ * token wants a header on each request; a same-site cookie wants nothing at
+ * all, since the browser sends it; something else may want
+ * `credentials: "include"` on fetch and `withCredentials` on axios. Those are
+ * different changes in different places, so guessing one of them now would
+ * only be a guess to undo. Requests in `lib/api-service.ts` currently carry
+ * no credential.
  *
  * Two things a real implementation will have to add back, removed here
  * because nothing could reach them while the user is always present:
@@ -56,14 +62,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthContextValue {
 	return useContext(AuthContext);
-}
-
-/**
- * Headers attached to every request the client makes to its own API.
- *
- * Empty today. A real scheme attaches its credential here — an Authorization
- * header, a signed cookie, whatever it is — and no caller needs to change.
- */
-export function authHeaders(): Record<string, string> {
-	return {};
 }
