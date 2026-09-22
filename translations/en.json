@@ -303,36 +303,5 @@
     "continue": "Continue",
     "submit": "Analyze & Submit",
     "cancel": "Cancel"
-  },
-  "ticker": {
-    "live": "LIVE",
-    "announcements": "Announcements",
-    "dismiss": "Dismiss",
-    "new": "NEW",
-    "tabs": {
-      "all": "All",
-      "payment": "Payment",
-      "feature": "Feature",
-      "event": "Event"
-    },
-    "labels": {
-      "payment": "PAYMENT",
-      "feature": "NEW FEATURE",
-      "event": "EVENT"
-    },
-    "empty": "No announcements in this category",
-    "unread_one": "[count] unread announcement",
-    "unread_many": "[count] unread announcements",
-    "allCaughtUp": "All caught up ✓",
-    "sample": {
-      "1_title": "PM-KISAN 19th Installment released — ₹2,000 credited to eligible farmers",
-      "1_body": "Check your bank account or Aadhaar-linked account. Funds credited on June 18, 2025.",
-      "2_title": "Crop Insurance (PMFBY) queries now live on BharatVistaar!",
-      "2_body": "Ask about claim status, premium calculation, and enrollment deadlines.",
-      "3_title": "Kisan Sammelan 2025 — Register by June 25",
-      "3_body": "Ministry of Agriculture event at Vigyan Bhawan, New Delhi. Free for all farmers.",
-      "4_title": "Soil Health Card support added — get crop recommendations instantly",
-      "5_title": "Bharati can now converse in Telugu, Bengali, Gujarati, and 7 other languages"
-    }
   }
 }
