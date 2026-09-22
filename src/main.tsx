@@ -1,14 +1,6 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { routeTree } from "./routeTree.gen";
-
-import { Loader } from "./components";
 import "./styles/global.css";
-import { queryClient } from "./hooks";
-import PageNotFound from "./pages/error/404";
-import DefaultError from "./pages/error/default-error";
-import { createRouteProgress } from "./config/route-progress";
+import { loadRuntimeConfig } from "./lib/config/runtime-config";
+
 window.addEventListener("vite:preloadError", async (event) => {
 	event.preventDefault();
 	// Get current count from session storage or initialize to 0
@@ -37,46 +29,19 @@ window.addEventListener("vite:preloadError", async (event) => {
 	window.location.reload(); // for example, refresh the page
 });
 
-const routeProgress = createRouteProgress();
-const router = createRouter({
-	routeTree,
-	context: { queryClient },
-	defaultPendingComponent: () => (
-		<div className="bg-background flex h-screen w-screen items-center justify-center">
-			<Loader />
-		</div>
-	),
-	defaultNotFoundComponent: PageNotFound,
-	defaultErrorComponent: DefaultError
-});
-
-declare module "@tanstack/react-router" {
-	interface Register {
-		router: typeof router;
-	}
-}
-
-router.subscribe("onBeforeLoad", ({ pathChanged }) => {
-	if (pathChanged) {
-		routeProgress.start();
-	}
-});
-
-router.subscribe("onResolved", () => {
-	routeProgress.done();
-});
-import { LanguageProvider } from "./components/LanguageProvider";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ConfigProvider } from "./hooks/ConfigProvider";
-
-createRoot(document.getElementById("root")!).render(
-	<StrictMode>
-		<AuthProvider>
-			<ConfigProvider>
-				<LanguageProvider>
-					<RouterProvider router={router} />
-				</LanguageProvider>
-			</ConfigProvider>
-		</AuthProvider>
-	</StrictMode>
-);
+/**
+ * Configuration has to be in place before anything that reads it is imported.
+ *
+ * ES modules evaluate their whole static import graph before the importing
+ * module's body runs, so a top-level `await` here would still be too late:
+ * `./bootstrap` reaches modules that read configuration at import time. The
+ * dynamic import below is what defers that evaluation until the fetch has
+ * resolved. Stylesheets are imported statically above because they do not
+ * depend on configuration and should not wait for it.
+ */
+loadRuntimeConfig()
+	.then(() => import("./bootstrap"))
+	.then(({ mount }) => mount())
+	.catch((error) => {
+		console.error("[boot] the application failed to start.", error);
+	});
