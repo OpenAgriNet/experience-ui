@@ -20,7 +20,6 @@ import { RecordingControls } from "./recording-controls";
 import { Suggestions } from "./suggestions";
 import type { Suggestion } from "../api/suggestions-api";
 import { useLanguage } from "@/components/LanguageProvider";
-import { useAuth } from "@/contexts/AuthContext";
 import { useChatStore } from "@/hooks/store/chat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { environment } from "@/lib/config/environment";
@@ -70,10 +69,8 @@ export function ChatInput({
 	onSuggestionClick
 }: ChatInputProps) {
 	const { t } = useLanguage();
-	const { user } = useAuth();
 	const setToast = useChatStore((s) => s.setToast);
 	const isMobile = useIsMobile();
-	const isUnauthenticated = !user;
 	const [isPestDialogOpen, setIsPestDialogOpen] = useState(false);
 	const [pestImage, setPestImage] = useState<File | null>(null);
 	const [pestImagePreview, setPestImagePreview] = useState<string | null>(null);
@@ -92,7 +89,7 @@ export function ChatInput({
 
 	const canSend = useMemo(() => value.trim().length > 0 || !!voice, [value, voice]);
 	const isLoading = isTranscribing || Boolean(disabled);
-	const isPestSubmitDisabled = disabled || isLoading || isUnauthenticated || !pestImage;
+	const isPestSubmitDisabled = disabled || isLoading || !pestImage;
 	const maxLength = environment.chatMessageMaxLength ?? 4000;
 	const charCount = value.length;
 	const isNearLimit = charCount >= maxLength * 0.8;
@@ -508,12 +505,12 @@ export function ChatInput({
 					<Button
 						type="button"
 						size="icon"
-						disabled={disabled || isLoading || isUnauthenticated}
+						disabled={disabled || isLoading}
 						onClick={startRecording}
 						className={cn(
 							"h-11 w-11 shrink-0 rounded-full text-black bg-[var(--primary)] hover:bg-[var(--accent)]/90 dark:bg-[var(--primary)] dark:hover:bg-[var(--primary)]/90 shadow-md",
 							isListening ? "animate-pulse" : "",
-							disabled || isLoading || isUnauthenticated ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+							disabled || isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
 						)}
 						aria-label="Record voice"
 					>
@@ -525,7 +522,7 @@ export function ChatInput({
   className={cn(
     "flex flex-1 min-h-[50px] min-w-0 items-stretch rounded-[16px] border bg-white dark:bg-[var(--inputBg-dark)] shadow-sm transition-colors duration-200 relative",
     canSend ? "border-black dark:border-[var(--border-dark)]" : "border-gray-300 dark:border-gray-700",
-    isLoading || isUnauthenticated ? "bg-gray-50 opacity-80 cursor-not-allowed" : ""
+    isLoading ? "bg-gray-50 opacity-80 cursor-not-allowed" : ""
   )}
 >
   {isLoading && (
@@ -559,14 +556,14 @@ export function ChatInput({
 							onValueChange(newValue.slice(0, maxLength));
 						}}
 						onKeyDown={onKeyDown}
-						disabled={disabled || isLoading || isUnauthenticated}
-						placeholder={(isLoading || isUnauthenticated) ? "" : placeholder}
+						disabled={disabled || isLoading}
+						placeholder={(isLoading) ? "" : placeholder}
     className={cn(
       "flex-1 min-w-0 max-h-[140px] min-h-[50px] mx-4 resize-none border-0 bg-transparent px-0 py-[13px] text-base leading-6 shadow-none",
       "focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none",
       "placeholder:text-gray-400 placeholder:leading-6 dark:text-[var(--inputText-dark)]",
       "break-words whitespace-pre-wrap overflow-y-auto block",
-	  disabled || isLoading || isUnauthenticated ? "cursor-not-allowed" : ""
+	  disabled || isLoading ? "cursor-not-allowed" : ""
 						)}
 					/>
 					{isNearLimit && (
@@ -582,11 +579,11 @@ export function ChatInput({
 					<div className="flex shrink-0 items-center pr-2">
     <Button
       type="button"
-      disabled={disabled || isLoading || isUnauthenticated}
+      disabled={disabled || isLoading}
       onClick={() => setIsPestDialogOpen(true)}
       className={cn(
         "h-12 w-12 rounded-full border border-transparent bg-transparent text-amber-700 hover:bg-amber-50 hover:text-amber-900 dark:text-amber-200 dark:hover:bg-amber-950/40 dark:hover:text-amber-100 shadow-none p-0",
-        disabled || isLoading || isUnauthenticated ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+        disabled || isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
       )}
       aria-label={t("pestApi.trigger") as string}
       title={t("pestApi.trigger") as string}

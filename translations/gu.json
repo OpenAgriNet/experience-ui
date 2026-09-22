@@ -175,10 +175,6 @@
     "darkMode": "ડાર્ક મોડ",
     "poweredBy": "ભારત વિસ્તાર દ્વારા સંચાલિત"
   },
-  "auth": {
-    "loginRequired": "લોગિન જરૂરી છે",
-    "loginPrompt": "ચાલુ રાખવા અને આ પેજને એક્સેસ કરવા માટે કૃપા કરીને લોગિન કરો."
-  },
   "imageUpload": {
     "captureImage": "ફોટો લો",
     "selectFromGallery": "ગેલરીમાંથી પસંદ કરો",

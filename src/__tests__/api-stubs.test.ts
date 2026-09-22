@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-	decodeJwtPayload,
-	makeStubJwt,
-	stubGetSuggestions,
-	stubSendUserQuery
-} from "@/lib/api-stubs";
+import { stubGetSuggestions, stubSendUserQuery } from "@/lib/api-stubs";
 
 /**
  * The stub layer stands in for the Experience API, which does not exist yet.
@@ -48,14 +43,6 @@ describe("api stubs", () => {
 		} finally {
 			vi.useRealTimers();
 		}
-	});
-
-	it("mints a decodable token that is not yet expired", () => {
-		const payload = decodeJwtPayload(makeStubJwt());
-
-		expect(payload).not.toBeNull();
-		expect(payload?.sub).toBe("stub-user-001");
-		expect(payload?.exp as number).toBeGreaterThan(Math.floor(Date.now() / 1000));
 	});
 
 	it("returns suggestions in the shape the chat store expects", async () => {

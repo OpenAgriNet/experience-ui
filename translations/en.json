@@ -270,10 +270,6 @@
   },
   "limitMessage": "Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the Bharat-VISTAAR app.",
   "chatErrorMessage": "Sorry, there was an error processing your request. Please try again.",
-  "auth": {
-    "loginRequired": "Login required",
-    "loginPrompt": "Please log in to continue and access this page."
-  },
   "locationPermission": {
     "title": "Please Allow Location Access",
     "subtitle": "Are you interested in receiving agricultural information for your location? If yes, please share your current location so we can send you relevant updates, such as:",
