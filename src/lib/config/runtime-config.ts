@@ -4,7 +4,9 @@
  * `config.json` is fetched from the deployed origin before React mounts, so a
  * deployment can be rebranded by replacing one file — no rebuild and no fork.
  * The copy bundled at build time is the fallback, used when the fetch fails or
- * the served file cannot be parsed.
+ * the served file cannot be parsed. Both come from src/config/app-config.json:
+ * a Vite plugin serves it at /config.json in dev and emits it to dist/ on
+ * build, so there is one source file and nothing to keep in sync.
  *
  * Read it with `getConfig()`. That throws before `loadRuntimeConfig()` has
  * resolved, which is deliberate: some modules read configuration at import
@@ -12,7 +14,7 @@
  * build-time values with no visible symptom. See `src/main.tsx` for the
  * ordering that guarantees this.
  */
-import bundledConfig from "~/public/config.json";
+import bundledConfig from "@/config/app-config.json";
 
 export type AppConfig = typeof bundledConfig;
 
