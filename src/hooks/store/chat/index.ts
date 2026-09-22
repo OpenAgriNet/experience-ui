@@ -37,10 +37,6 @@ export type QuickAction = {
 	prompt: string;
 };
 
-type FetchLocationOptions = {
-	trackBrowserDecision?: boolean;
-};
-
 type ChatStore = {
 	messages: ChatMessage[];
 	quickActions: QuickAction[];
@@ -74,15 +70,9 @@ type ChatStore = {
 	stopTTS: () => void;
 	currentlyPlayingId: string | null;
 	ttsStatus: "playing" | "paused" | "stopped";
-	submitMessageFeedback: (
-		messageId: string,
-		isPositive: boolean,
-		reason?: string,
-		feedback?: string
-	) => Promise<void>;
 	toast: { message: string; type: ToastType } | null;
 	setToast: (toast: { message: string; type: ToastType } | null) => void;
-	fetchLocation: (t?: any, options?: FetchLocationOptions) => Promise<void>;
+	fetchLocation: (t?: any) => Promise<void>;
 };
 const quickActionSeeds: QuickAction[] = [
 	{
@@ -301,7 +291,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
 	setDraft: (value) => set(() => ({ draft: value })),
 
-	fetchLocation: (t, options) => {
+	fetchLocation: (t) => {
 		if (typeof window === "undefined" || !navigator.geolocation) {
 			set({
 				toast: {
@@ -333,20 +323,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 						"user_location",
 						JSON.stringify({ latitude, longitude, timestamp: Date.now() })
 					);
-					if (!options?.trackBrowserDecision) {
-						apiService.trackUiTelemetryEvent({
-							event_name: "location_allowed",
-							category: "location",
-							metadata: { action: "allow" }
-						});
-					}
-					if (options?.trackBrowserDecision) {
-						apiService.trackUiTelemetryEvent({
-							event_name: "location_browser_allowed",
-							category: "location",
-							metadata: { action: "allow" }
-						});
-					}
 					hasResolvedLocationAttempt = true;
 					locationFetchPromise = null;
 					resolve();
@@ -361,17 +337,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 									? "toast.locationUnavailable.description"
 									: "toast.locationError.description";
 
-					if (options?.trackBrowserDecision) {
-						void navigator.permissions?.query({ name: "geolocation" }).then((result) => {
-							if (result.state === "denied") {
-								apiService.trackUiTelemetryEvent({
-									event_name: "location_browser_never_allow",
-									category: "location",
-									metadata: { action: "deny" }
-								});
-							}
-						}).catch(() => undefined);
-					}
 
 					hasResolvedLocationAttempt = true;
 					locationFetchPromise = null;
@@ -511,18 +476,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 						return [...state.messages, message];
 					})()
 				}));
-				const telemetryQid = getErrorQid(error) || get().messages.at(-1)?.id || "missing-qid";
 
-				await apiService
-					.submitTelemetryError({
-						qid: telemetryQid,
-						session_id: currentSession,
-						error_text: "Rate limit error (429)",
-						question_text: safeText
-					})
-					.catch((telemetryError) =>
-						console.warn("Backend telemetry error relay failed", telemetryError)
-					);
 			} else {
 				// Show error as an in-chat message with retry capability
 				const errorMessage = t
@@ -544,18 +498,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 						return [...state.messages, message];
 					})()
 				}));
-				const telemetryQid = getErrorQid(error) || get().messages.at(-1)?.id || "missing-qid";
 
-				await apiService
-					.submitTelemetryError({
-						qid: telemetryQid,
-						session_id: currentSession,
-						error_text: String(error),
-						question_text: safeText
-					})
-					.catch((telemetryError) =>
-						console.warn("Backend telemetry error relay failed", telemetryError)
-					);
 			}
 		}
 	},
@@ -706,18 +649,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 						return [...state.messages, message];
 					})()
 				}));
-				const telemetryQid = getErrorQid(error) || get().messages.at(-1)?.id || "missing-qid";
 
-				await apiService
-					.submitTelemetryError({
-						qid: telemetryQid,
-						session_id: currentSession,
-						error_text: "Rate limit error (429)",
-						question_text: `[Image] ${uploadFile.name}`
-					})
-					.catch((telemetryError) =>
-						console.warn("Backend telemetry error relay failed", telemetryError)
-					);
 			} else {
 				const errorMessage = t
 					? t("imageUpload.analysisFailed") || "Sorry, there was an error analyzing your image. Please try again."
@@ -738,18 +670,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 						return [...state.messages, message];
 					})()
 				}));
-				const telemetryQid = getErrorQid(error) || get().messages.at(-1)?.id || "missing-qid";
 
-				await apiService
-					.submitTelemetryError({
-						qid: telemetryQid,
-						session_id: currentSession,
-						error_text: String(error),
-						question_text: `[Image] ${uploadFile.name}`
-					})
-					.catch((telemetryError) =>
-						console.warn("Backend telemetry error relay failed", telemetryError)
-					);
 			}
 		}
 	},
@@ -1047,45 +968,4 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 		set({ currentlyPlayingId: null, ttsStatus: "stopped" });
 	},
 
-	submitMessageFeedback: async (messageId, isPositive, reason, feedback) => {
-		const { sessionId, messages } = get();
-		if (!sessionId) return;
-
-		const msg = messages.find((m) => m.id === messageId);
-		if (!msg) return;
-
-		const userMsg = messages.findLast((m) => m.role === "user");
-		const questionText = userMsg && userMsg.type === "text" ? userMsg.text : "";
-		const responseText = msg && msg.type === "card" ? msg.body : "";
-		const qid = msg.type === "card" ? msg.qid || messageId : messageId;
-		if (msg.type !== "card" || !msg.qid) {
-			warnMissingBackendQid("message feedback", qid);
-		}
-		const feedbackType = isPositive ? "like" : "dislike";
-		const feedbackMsg = isPositive
-			? "Liked the response"
-			: feedback || reason || "Negative feedback";
-
-		try {
-			await apiService.submitTelemetryFeedback({
-				qid,
-				session_id: sessionId,
-				message_id: messageId,
-				feedback_type: feedbackType,
-				feedback_text: feedbackMsg,
-				question_text: questionText,
-				answer_text: responseText
-			});
-
-			// Logic from user code: show success toast
-			// if (isPositive) {
-			// 	set({ toast: { message: "Thank you for your feedback! We're glad this response was helpful.", type: "success" } });
-			// } else {
-			// 	set({ toast: { message: "Thank you for your feedback. We'll use it to improve our responses.", type: "success" } });
-			// }
-		} catch (error) {
-			console.error("Feedback telemetry error:", error);
-			set({ toast: { message: "Failed to submit feedback. Please try again.", type: "error" } });
-		}
-	}
 }));

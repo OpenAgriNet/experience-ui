@@ -7,7 +7,6 @@ import {
   stubSendUserQuery,
   stubTranscribeAudio,
   stubUploadImage,
-  stubVoid,
 } from '@/lib/api-stubs';
 
 export interface LocationData {
@@ -37,30 +36,7 @@ interface TTSResponse {
   session_id: string;
 }
 
-interface TelemetryFeedbackPayload {
-  qid: string;
-  session_id: string;
-  message_id?: string;
-  feedback_type: string;
-  feedback_text: string;
-  question_text: string;
-  answer_text: string;
-}
-
-interface TelemetryErrorPayload {
-  qid: string;
-  session_id: string;
-  error_text: string;
-  question_text?: string;
-  message_id?: string;
-}
-
-type UiTelemetryEvent = {
-  event_name: string;
-  category: string;
-  time: string;
-  metadata: Record<string, unknown>;
-};
+;
 
 interface ImageUploadResponse {
   image_id: string;
@@ -326,40 +302,6 @@ class ApiService {
     }, config);
   }
 
-  async submitPositiveFeedback(messageId: string): Promise<void> {
-    try {
-      await this.submitTelemetryFeedback({
-        qid: messageId,
-        session_id: this.currentSessionId || "",
-        message_id: messageId,
-        feedback_type: "like",
-        feedback_text: "Liked the response",
-        question_text: "",
-        answer_text: ""
-      });
-    } catch (error) {
-      console.error('Error submitting positive feedback:', error);
-      throw error;
-    }
-  }
-
-  async submitNegativeFeedback(messageId: string, reason: string, feedback: string): Promise<void> {
-    try {
-      await this.submitTelemetryFeedback({
-        qid: messageId,
-        session_id: this.currentSessionId || "",
-        message_id: messageId,
-        feedback_type: "dislike",
-        feedback_text: feedback || reason || "Negative feedback",
-        question_text: "",
-        answer_text: ""
-      });
-    } catch (error) {
-      console.error('Error submitting negative feedback:', error);
-      throw error;
-    }
-  }
-
   blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -396,50 +338,6 @@ class ApiService {
 
   getSessionId(): string | null {
     return this.currentSessionId;
-  }
-
-  async submitTelemetryFeedback(payload: TelemetryFeedbackPayload): Promise<void> {
-    if (stubsEnabled()) return stubVoid('POST /api/telemetry/feedback', payload);
-
-
-    await this.axiosInstance.post('/api/telemetry/feedback', payload, {
-    });
-  }
-
-  async submitTelemetryError(payload: TelemetryErrorPayload): Promise<void> {
-    if (stubsEnabled()) return stubVoid('POST /api/telemetry/error', payload);
-
-
-    await this.axiosInstance.post('/api/telemetry/error', payload, {
-    });
-  }
-
-  trackUiTelemetryEvent(event: Omit<UiTelemetryEvent, "time"> & { time?: string }): void {
-    void this.submitUiTelemetryEvent(event);
-  }
-
-  private async submitUiTelemetryEvent(event: Omit<UiTelemetryEvent, "time"> & { time?: string }): Promise<void> {
-    try {
-      if (stubsEnabled()) return await stubVoid('POST /api/telemetry/events', event);
-
-
-      const metadata = {
-        ...(event.metadata || {}),
-        ...(this.currentSessionId && !event.metadata?.sid ? { sid: this.currentSessionId } : {})
-      };
-
-      const payload: UiTelemetryEvent[] = [{
-        event_name: event.event_name,
-        category: event.category,
-        time: event.time || new Date().toISOString(),
-        metadata
-      }];
-
-      await this.axiosInstance.post('/api/telemetry/events', payload, {
-      });
-    } catch {
-      // UI telemetry must never block or surface errors to users.
-    }
   }
 
 }

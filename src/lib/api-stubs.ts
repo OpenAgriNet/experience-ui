@@ -186,12 +186,6 @@ export const stubGetTranscript = async (sessionId: string) => {
   };
 };
 
-/** POST /api/feedback/* and /api/telemetry/* — fire and forget. */
-export const stubVoid = async (endpoint: string, payload?: unknown): Promise<void> => {
-  stubLog(endpoint, payload);
-  await delay(120);
-};
-
 /** Default location used when the browser withholds geolocation. */
 export const STUB_LOCATION: LocationData = {
   latitude: 18.5204,
