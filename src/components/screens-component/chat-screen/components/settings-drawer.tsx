@@ -1,12 +1,9 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Moon, Sun, X, Shield, ChevronRight } from "lucide-react";
+import { Moon, Sun, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useThemeStore } from "@/hooks/store/theme";
-import { THEMES, FAQ_DATA } from "@/components/screens-component/chat-screen/config";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { THEMES } from "@/components/screens-component/chat-screen/config";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { useNavigate } from "@tanstack/react-router";
 
 interface SettingsDrawerProps {
 	open: boolean;
@@ -16,16 +13,6 @@ interface SettingsDrawerProps {
 export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
 	const { t } = useLanguage();
 	const { theme, setTheme } = useThemeStore();
-	const navigate = useNavigate();
-	const [faqOpen, setFaqOpen] = useState(true);
-	const [expandedFaqs, setExpandedFaqs] = useState<Record<string, boolean>>({ "1": true });
-
-	const toggleFaq = (id: string) => {
-		setExpandedFaqs((prev) => ({
-			...prev,
-			[id]: !prev[id]
-		}));
-	};
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -87,93 +74,6 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
 						</div>
 					</div>
 
-					{/* FAQ Section */}
-					<div className="space-y-4">
-						<h3 className="text-sm font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">
-							{t("settingsPage.helpAndSupport")}
-						</h3>
-						<Collapsible
-							open={faqOpen}
-							onOpenChange={setFaqOpen}
-							className="w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[var(--border-dark)] dark:bg-[var(--background-dark)]"
-						>
-							<CollapsibleTrigger asChild>
-								<button className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/50">
-									<span className="text-base font-bold text-gray-900 dark:text-gray-100">
-										{t("settingsPage.faq")}
-									</span>
-									{faqOpen ? (
-										<ChevronUp className="h-5 w-5 text-gray-500" />
-									) : (
-										<ChevronDown className="h-5 w-5 text-gray-500" />
-									)}
-								</button>
-							</CollapsibleTrigger>
-							<CollapsibleContent className="space-y-4 px-5 pb-5">
-								<div className="space-y-4 border-t border-gray-100 pt-5 dark:border-[var(--border-dark)]">
-									{FAQ_DATA.map((faq, index) => (
-										<div
-											key={faq.id}
-											className="overflow-hidden rounded-xl border border-gray-100 dark:border-[var(--border-dark)]"
-										>
-											<button
-												onClick={() => toggleFaq(faq.id)}
-												className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-900/30"
-											>
-												<span className="mt-0.5 min-w-[20px] font-bold text-gray-400 dark:text-gray-500">
-													{index + 1}.
-												</span>
-												<span className="flex-1 leading-snug font-bold text-gray-900 dark:text-gray-100">
-													{faq.question}
-												</span>
-												{expandedFaqs[faq.id] ? (
-													<ChevronUp className="h-4 w-4 flex-shrink-0 text-gray-400" />
-												) : (
-													<ChevronDown className="h-4 w-4 flex-shrink-0 text-gray-400" />
-												)}
-											</button>
-											{expandedFaqs[faq.id] && (
-												<div className="space-y-4 px-4 pb-4">
-													{/* {faq.image && (
-														<div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
-															<img
-																src={faq.image}
-																alt={faq.question}
-																className="w-full h-full object-cover"
-																onError={(e) => {
-																	(e.target as HTMLImageElement).src = "/images/fallback-farm.jpg";
-																}}
-															/>
-														</div>
-													)} */}
-													<p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-														{faq.answer}
-													</p>
-												</div>
-											)}
-										</div>
-									))}
-								</div>
-							</CollapsibleContent>
-						</Collapsible>
-
-						{/* Privacy Policy Link */}
-						<button
-							onClick={() => {
-								navigate({ to: "/privacy-policy" });
-								onOpenChange(false);
-							}}
-							className="flex w-full cursor-pointer items-center justify-between rounded-lg px-4 py-2.5 text-left transition-colors hover:bg-gray-100/80 dark:hover:bg-gray-800/50"
-						>
-							<div className="flex items-center gap-2.5">
-								<Shield className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-								<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-									Privacy Policy
-								</span>
-							</div>
-							<ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-						</button>
-					</div>
 				</div>
 
 				<div className="border-t border-gray-100 bg-gray-50/50 p-6 dark:border-gray-900 dark:bg-gray-900/30">

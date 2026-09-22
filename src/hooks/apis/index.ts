@@ -1,5 +1,3 @@
-export * from "./auth";
 export * from "./componets";
 export * from "./react-query";
 export * from "./chat-screen";
-export * from "./profile";
