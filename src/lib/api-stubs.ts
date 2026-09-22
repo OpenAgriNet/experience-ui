@@ -15,7 +15,7 @@
  * advice.
  */
 
-import config from '~/config.json';
+import { getConfig } from '@/lib/config/runtime-config';
 import type {
   ChatResponse,
   LocationData,
@@ -23,21 +23,34 @@ import type {
   TranscriptionResponse,
 } from '@/lib/api-service';
 
-export const STUBS_ENABLED = config.stubs.enabled === true;
+let hasWarned = false;
+
+/**
+ * Read lazily rather than at module load. Configuration is fetched before React
+ * mounts, but this module is also imported by tests and by anything that runs
+ * outside that boot path, where reading at import time would throw.
+ */
+export const stubsEnabled = (): boolean => {
+  const enabled = getConfig().stubs.enabled === true;
+
+  if (enabled && !hasWarned) {
+    hasWarned = true;
+    console.warn(
+      '[stub] API stubs are enabled: no backend is being contacted and all data is fabricated. ' +
+        'Set stubs.enabled to false in config.json before deploying.'
+    );
+  }
+
+  return enabled;
+};
 
 /**
  * Stub tokens carry a fake signature, so `jose.jwtVerify` would reject them.
- * Separate from STUBS_ENABLED so that verification can be kept on deliberately
+ * Separate from stubsEnabled() so that verification can be kept on deliberately
  * while other endpoints are stubbed.
  */
-export const SKIP_JWT_VERIFICATION = STUBS_ENABLED && config.stubs.skipJwtVerification !== false;
-
-if (STUBS_ENABLED) {
-  console.warn(
-    '[stub] API stubs are enabled: no backend is being contacted and all data is fabricated. ' +
-      'Set stubs.enabled to false in config.json before deploying.'
-  );
-}
+export const skipJwtVerification = (): boolean =>
+  stubsEnabled() && getConfig().stubs.skipJwtVerification !== false;
 
 /** Log every stubbed call so it's obvious nothing real is happening. */
 export const stubLog = (endpoint: string, detail?: unknown): void => {
