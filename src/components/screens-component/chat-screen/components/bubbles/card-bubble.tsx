@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, ThumbsDown, ThumbsUp, Volume2, Check, Pause, Play, RefreshCw } from "lucide-react";
+import { Copy, Volume2, Check, Pause, Play, RefreshCw } from "lucide-react";
 import { type CardMessage } from "./chat-types";
-import { FeedbackModal } from "../feedback-modal";
 import { useChatStore } from "@/hooks/store/chat";
 import { useLanguage } from "@/components/LanguageProvider";
 import { cn } from "@/lib/utils";
@@ -17,15 +16,10 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 	const resumeTTS = useChatStore((s) => s.resumeTTS);
 	const currentlyPlayingId = useChatStore((s) => s.currentlyPlayingId);
 	const ttsStatus = useChatStore((s) => s.ttsStatus);
-	const submitFeedback = useChatStore((s) => s.submitMessageFeedback);
 	const retryLastMessage = useChatStore((s) => s.retryLastMessage);
 	const setToast = useChatStore((s) => s.setToast);
 
-	const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [showCopySuccess, setShowCopySuccess] = useState(false);
-	const [showThumbsUpSuccess, setShowThumbsUpSuccess] = useState(false);
-	const [showThumbsDownSuccess, setShowThumbsDownSuccess] = useState(false);
 	const [isRetrying, setIsRetrying] = useState(false);
 
 	const isThisPlaying = currentlyPlayingId === message.id && ttsStatus === "playing";
@@ -53,24 +47,6 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 		retryLastMessage(language);
 	};
 
-	const handleThumbsUp = async () => {
-		if (isSubmitting) return;
-		setIsSubmitting(true);
-
-		try {
-			await submitFeedback(message.id, true);
-			setShowThumbsUpSuccess(true);
-		} catch (error) {
-			console.error("Thumbs up failed:", error);
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	const handleThumbsDown = () => {
-		setFeedbackModalOpen(true);
-	};
-
 	const handleCopy = async () => {
 		try {
 			await navigator.clipboard.writeText(message.body);
@@ -79,23 +55,6 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 		} catch (error) {
 			console.error(error);
 			setToast({ message: "Failed to copy to clipboard. Please try again", type: "error" });
-		}
-	};
-
-	const handleFeedbackSubmit = async (
-		reason: string,
-		feedbackMessage: string
-	) => {
-		setIsSubmitting(true);
-		setFeedbackModalOpen(false);
-
-		try {
-			await submitFeedback(message.id, false, reason, feedbackMessage);
-			setShowThumbsDownSuccess(true);
-		} catch (error) {
-			console.error("Feedback submission failed:", error);
-		} finally {
-			setIsSubmitting(false);
 		}
 	};
 
@@ -189,52 +148,6 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 									)}
 								</Button>
 
-								<div className="h-5 w-px self-center bg-gray-200 dark:bg-indigo-800/30" />
-
-								{!showThumbsDownSuccess && (
-									<>
-										<div className="flex-1 flex items-center justify-center">
-											<Button
-												variant="ghost"
-												size="icon"
-												className={cn(
-													"h-10 w-12 rounded-none text-foreground/60 transition-all hover:bg-indigo-50 hover:text-[var(--primary)] dark:text-gray-400 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300 cursor-pointer disabled:opacity-100",
-													showThumbsUpSuccess && "pointer-events-none"
-												)}
-												title="Helpful"
-												onClick={handleThumbsUp}
-												disabled={isSubmitting || showThumbsUpSuccess}
-											>
-												<ThumbsUp 
-													className={cn("h-4 w-4 text-[var(--primary)]")} 
-													fill={showThumbsUpSuccess ? "var(--primary)" : "none"}
-												/>
-											</Button>
-										</div>
-										{!showThumbsUpSuccess && <div className="h-5 w-px self-center bg-gray-200 dark:bg-indigo-800/30" />}
-									</>
-								)}
-
-								{!showThumbsUpSuccess && (
-									<div className="flex-1 flex items-center justify-center">
-										<Button
-											variant="ghost"
-											size="icon"
-											className={cn(
-												"h-10 w-12 rounded-none text-foreground/60 transition-all hover:bg-red-50 hover:text-red-500 dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400 cursor-pointer disabled:opacity-100",
-												showThumbsDownSuccess && "pointer-events-none"
-											)}
-											title="Not Helpful"
-											onClick={handleThumbsDown}
-											disabled={isSubmitting || showThumbsDownSuccess}
-										>
-											<ThumbsDown 
-												className={cn("h-4 w-4 text-[var(--primary)]")} 
-												fill={showThumbsDownSuccess ? "var(--primary)" : "none"}
-											/>
-										</Button>
-									</div>
-								)}
 							</div>
 							</div>
 						</div>
@@ -242,12 +155,6 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 				</Card>
 			</div>
 
-			{/* Feedback Modal */}
-			<FeedbackModal
-				open={feedbackModalOpen}
-				onClose={() => setFeedbackModalOpen(false)}
-				onSubmit={handleFeedbackSubmit}
-			/>
 		</>
 	);
 }
