@@ -29,3 +29,6 @@ dist-ssr
 
 coverage/
 .sonar/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
