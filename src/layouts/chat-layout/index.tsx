@@ -1,7 +1,5 @@
 import { ChatHeader } from "@/components/screens-component/layouts/chat-header";
-import { TickerVariant1, TickerVariant5 } from "@/components/screens-component/chat-screen/components/ticker-designs";
 import { ChatInput, type ChatInputPayload } from "@/components/screens-component/chat-screen/components/chat-input";
-import { env } from "@/config/env";
 import { CHAT_USER } from "@/components/screens-component/chat-screen/config";
 import { useChatStore } from "@/hooks/store/chat";
 import { Outlet } from "@tanstack/react-router";
@@ -100,8 +98,6 @@ function ChatLayout() {
 					onClose={handleCloseToast}
 				/>
 			)}
-			{/* Variant 5: Branded announcement hero at the top of the chatbot */}
-			{env.uiTicker === 5 && <TickerVariant5 />}
 			<ChatHeader
 				title={t("appTitle") as string}
 				subtitle="Government assistance and agriculture insights"
@@ -111,8 +107,6 @@ function ChatLayout() {
 				onOpenSettings={() => setSettingsOpen(true)}
 				onBack={() => window.history.back()}
 			/>
-			{/* Variant 1: Original scrolling strip below the header */}
-			{env.uiTicker === 1 && <TickerVariant1 inLayout />}
 			{/* Only this area can scroll (via ChatShell/MessageList) */}
 			<main className="min-h-0 flex-1 bg-transparent">
 				<Outlet />
