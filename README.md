@@ -71,8 +71,14 @@ else — a reverse proxy terminating TLS and handling access control — and doe
 nothing about either itself.
 
 ```bash
+docker compose up --build        # http://localhost:8080
+```
+
+or without compose:
+
+```bash
 docker build -t experience-ui .
-docker run -p 8080:8080 experience-ui        # http://localhost:8080
+docker run -p 8080:8080 experience-ui
 ```
 
 `GET /healthz` returns `ok` for whatever is in front.
@@ -90,6 +96,10 @@ To override it, mount a **directory** containing `config.json` at
 ```bash
 docker run -p 8080:8080 -v "$PWD/my-config:/etc/experience-ui:ro" experience-ui
 ```
+
+`docker-compose.yml` has the same mount commented out — uncomment it once the
+directory exists. It is left off by default because an empty or missing
+directory would shadow the config the image ships with.
 
 ```yaml
 # Kubernetes
