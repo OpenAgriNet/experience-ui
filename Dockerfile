@@ -4,7 +4,7 @@
 # Node rather than Bun. The TanStack Router plugin loads src/routes.ts through
 # tsx, which is a Node loader, so a Bun builder needed a Node installed beside
 # it to work at all — and failed unpredictably when it did not.
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
