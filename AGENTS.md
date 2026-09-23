@@ -29,7 +29,7 @@ a feature flag flips, update it in the same change.
 - Routing: TanStack Router, virtual file routes (`src/routes.ts`)
 - State: Zustand
 - Styling: Tailwind CSS v4, shadcn/ui components in `src/components/ui`
-- Runtime and package manager: **Node 22 and npm.** One lockfile,
+- Runtime and package manager: **Node 24 and npm.** One lockfile,
   `package-lock.json`. Nothing runs a JavaScript runtime in production — the
   deployed artifact is static files served by nginx
 - Tests: Vitest, with happy-dom where a test needs a real `document`

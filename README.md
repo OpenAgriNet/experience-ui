@@ -47,7 +47,7 @@ API contract needs better documentation — please open an issue instead.
 
 ## Quick start
 
-Requires [Node](https://nodejs.org) 20 or newer.
+Requires [Node](https://nodejs.org) 22 or newer.
 
 ```bash
 npm install
