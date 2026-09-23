@@ -1,0 +1,25 @@
+services:
+  experience-ui:
+    build: .
+    image: experience-ui:latest
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+    # To run against your own configuration, create a directory holding a
+    # config.json and mount it here. Left commented out because an empty or
+    # missing directory would shadow the default the image ships with, and the
+    # client would boot on its fallback instead.
+    #
+    # A directory rather than a single file: single-file bind mounts fail on
+    # some container runtimes, and a Kubernetes ConfigMap mounted with subPath
+    # never sees later updates.
+    #
+    # volumes:
+    #   - ./my-config:/etc/experience-ui:ro

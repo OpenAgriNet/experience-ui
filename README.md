@@ -64,6 +64,63 @@ labelled as stubbed so fabricated agricultural advice cannot be mistaken for
 real. Set `stubs.enabled` to `false` to talk to a real backend. See
 [`src/lib/api-stubs.ts`](src/lib/api-stubs.ts).
 
+## Deployment
+
+The image is a static build served by nginx. It expects to sit behind something
+else — a reverse proxy terminating TLS and handling access control — and does
+nothing about either itself.
+
+```bash
+docker compose up --build        # http://localhost:8080
+```
+
+or without compose:
+
+```bash
+docker build -t experience-ui .
+docker run -p 8080:8080 experience-ui
+```
+
+`GET /healthz` returns `ok` for whatever is in front.
+
+### Configuring a deployment
+
+Everything a deployment changes — name, logo, favicon, colours, which features
+are on, whether stubs are enabled — lives in `config.json`, read at boot and
+applied without a rebuild. The image ships a default, so an unconfigured
+container runs.
+
+To override it, mount a **directory** containing `config.json` at
+`/etc/experience-ui`:
+
+```bash
+docker run -p 8080:8080 -v "$PWD/my-config:/etc/experience-ui:ro" experience-ui
+```
+
+`docker-compose.yml` has the same mount commented out — uncomment it once the
+directory exists. It is left off by default because an empty or missing
+directory would shadow the config the image ships with.
+
+```yaml
+# Kubernetes
+volumeMounts:
+  - name: config
+    mountPath: /etc/experience-ui
+volumes:
+  - name: config
+    configMap:
+      name: experience-ui-config    # with a config.json key
+```
+
+A directory rather than a single file, deliberately: single-file bind mounts
+fail outright on some container runtimes, and a ConfigMap mounted with `subPath`
+never sees later updates.
+
+`config.json` is served with `Cache-Control: no-store`, so a changed
+configuration takes effect on the next reload rather than whenever a cache
+happens to expire. Content-hashed assets under `/assets/` are cached for a year;
+`index.html` is not cached, because it names those assets.
+
 ## Documentation
 
 | Doc | Contents |

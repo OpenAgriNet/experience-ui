@@ -45,7 +45,7 @@
     "textToSpeech": false,
     "imageQuestions": false,
     "suggestions": false,
-    "geolocation": false,
+    "geolocation": true,
     "languageSelector": false
   },
   "brand": {
