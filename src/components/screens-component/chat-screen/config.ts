@@ -26,18 +26,31 @@ export const DEFAULT_LANGUAGE: LanguageCode = rootConfig.defaultLanguage as Lang
 // CHAT CONFIGURATION
 // ============================================================================
 
+/**
+ * Resolves a configured asset URL against the path the app is served from.
+ *
+ * A deployment may point these at a CDN, in which case the URL is absolute and
+ * is left alone. A path is treated as relative to the app, so it keeps working
+ * when the app is mounted under a sub-path.
+ */
+const brandAsset = (value: string): string => {
+	if (!value) return value;
+	if (/^[a-z]+:\/\//i.test(value) || value.startsWith("data:")) return value;
+	return `${import.meta.env.BASE_URL}${value.replace(/^\//, "")}`;
+};
+
 export const APP_NAME: string = rootConfig.brand.appName;
 
-export const BRAND_LOGO: string = rootConfig.brand.logo;
+export const BRAND_LOGO: string = brandAsset(rootConfig.brand.logo);
 
 export const CHAT_ASSISTANT = {
 	name: rootConfig.brand.assistantName,
-	avatar: rootConfig.brand.assistantAvatar
+	avatar: brandAsset(rootConfig.brand.assistantAvatar)
 };
 
 export const CHAT_USER = {
 	name: "",
-	avatar: rootConfig.brand.userAvatar
+	avatar: brandAsset(rootConfig.brand.userAvatar)
 };
 
 export const THEMES = {

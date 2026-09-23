@@ -12,6 +12,17 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# Where the app will be mounted, baked into the bundle. "/" is the origin root.
+# An image built with a sub-path serves only from that path, so build one per
+# path if a deployment needs more than one:
+#
+#   docker build --build-arg VITE_BASE_PATH=/experience/ .
+#
+# Leading and trailing slashes both matter.
+ARG VITE_BASE_PATH=/
+ENV VITE_BASE_PATH=$VITE_BASE_PATH
+
 RUN npm run build
 
 # ---- Serve ------------------------------------------------------------------

@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
 import { CHAT_ASSISTANT } from "../config";
 
-const deleteIcon = "/assets/delete.svg";
-const micIcon = "/assets/micIcon.svg";
-const sendRecord = "/assets/sendRecord.svg";
-const pauseRecordIcon = "/assets/pauseRecordIcon.svg";
+const deleteIcon = `${import.meta.env.BASE_URL}assets/delete.svg`;
+const micIcon = `${import.meta.env.BASE_URL}assets/micIcon.svg`;
+const sendRecord = `${import.meta.env.BASE_URL}assets/sendRecord.svg`;
+const pauseRecordIcon = `${import.meta.env.BASE_URL}assets/pauseRecordIcon.svg`;
 
 type RecordingState = "recording" | "paused";
 
