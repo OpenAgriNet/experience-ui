@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/components/LanguageProvider";
 import { LANGUAGES } from "@/components/screens-component/chat-screen/config";
 import { LanguageSelectionDropdown } from "@/components/screens-component/chat-screen/components/language-selection-dialog";
-const logo = "/maha-logo.svg";
+const logo = "/brand/logo.svg";
 const settingsIcon = "/assets/settings.svg";
 const langIcon = "/assets/langIcon.svg";
 

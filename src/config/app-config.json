@@ -41,7 +41,7 @@
     }
   },
   "icons": {
-    "assistant": "/chatBotIcon.svg",
+    "assistant": "/brand/assistant.svg",
     "user": ""
   },
   "languages": [

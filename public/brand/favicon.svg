@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Neutral placeholder favicon. Replace via the brand.favicon config field. -->
+  <rect width="32" height="32" rx="7" fill="#eef2f6"/>
+  <path d="M16 25V13" stroke="#5b8c5a" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M16 15c0-3.6 2.5-6.5 6.5-7.2.4 3.7-1.8 6.9-6.5 7.2z" fill="#5b8c5a"/>
+  <path d="M16 19c0-2.9-2.2-5.4-5.4-6.1-.4 3 1.4 5.8 5.4 6.1z" fill="#7aa877"/>
+</svg>
