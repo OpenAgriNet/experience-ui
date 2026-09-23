@@ -112,6 +112,33 @@ docker run -p 8080:8080 experience-ui
 
 `GET /healthz` returns `ok` for whatever is in front.
 
+### Serving from a sub-path
+
+The client is built for the origin root by default. To mount it under a path on
+a shared domain, build with that path and have the proxy strip the prefix:
+
+```bash
+docker build --build-arg VITE_BASE_PATH=/experience/ -t experience-ui .
+```
+
+```nginx
+location /experience/ {
+    proxy_pass http://experience-ui:8080/;   # the trailing slash strips the prefix
+}
+
+location = /experience {
+    return 301 /experience/;                 # otherwise a bare /experience 404s
+}
+```
+
+Leading and trailing slashes on `VITE_BASE_PATH` both matter. The path is baked
+into the bundle, so **an image built for a sub-path serves only from that
+path** — a deployment that needs two paths builds two images. In CI it comes
+from the `VITE_BASE_PATH` repository variable, defaulting to `/`.
+
+Note that nginx resolves a `proxy_pass` hostname once at config load: restart
+the app container and the proxy keeps the old address until it is reloaded too.
+
 ### Configuring a deployment
 
 Everything a deployment changes — name, logo, favicon, colours, which features
