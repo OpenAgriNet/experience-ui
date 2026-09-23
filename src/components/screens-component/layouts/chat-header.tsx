@@ -1,9 +1,8 @@
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/components/LanguageProvider";
-import { LANGUAGES } from "@/components/screens-component/chat-screen/config";
+import { BRAND_LOGO, LANGUAGES } from "@/components/screens-component/chat-screen/config";
 import { LanguageSelectionDropdown } from "@/components/screens-component/chat-screen/components/language-selection-dialog";
-const logo = "/maha-logo.svg";
 const settingsIcon = "/assets/settings.svg";
 const langIcon = "/assets/langIcon.svg";
 
@@ -30,7 +29,7 @@ export function ChatHeader(props: ChatHeaderProps) {
 				{/* Left: Logo & Title */}
 				<div className="flex items-center gap-2 min-w-0">
 					<img 
-						src={logo} 
+						src={BRAND_LOGO} 
 						alt={title} 
 						className="h-11 sm:h-12 w-auto object-contain shrink-0" 
 					/>

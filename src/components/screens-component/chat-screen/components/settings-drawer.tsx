@@ -78,7 +78,7 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
 
 				<div className="border-t border-gray-100 bg-gray-50/50 p-6 dark:border-gray-900 dark:bg-gray-900/30">
 					<p className="text-center text-xs text-gray-400 dark:text-gray-500">
-						Version 1.0.0 • {t("settingsPage.poweredBy")}
+						Version 1.0.0
 					</p>
 				</div>
 			</SheetContent>

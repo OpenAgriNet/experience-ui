@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { CHAT_ASSISTANT } from "../config";
+import { APP_NAME, CHAT_ASSISTANT } from "../config";
 import { QuickAction } from "@/hooks/store/chat";
 
 type WelcomePanelProps = {
@@ -28,7 +28,7 @@ export function WelcomePanel({ onAction, actions }: WelcomePanelProps) {
 				</Avatar>
 
 				<div className="space-y-1">
-					<div className="text-2xl font-semibold text-[var(--primary)]">{t("appTitle")}</div>
+					<div className="text-2xl font-semibold text-[var(--primary)]">{APP_NAME}</div>
 					<div className="text-xl font-medium text-black dark:text-[#F6F6F6]">{t("welcome")}</div>
 				</div>
 			</div>

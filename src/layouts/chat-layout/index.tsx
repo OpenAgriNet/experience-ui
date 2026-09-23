@@ -1,6 +1,6 @@
 import { ChatHeader } from "@/components/screens-component/layouts/chat-header";
 import { ChatInput, type ChatInputPayload } from "@/components/screens-component/chat-screen/components/chat-input";
-import { CHAT_USER } from "@/components/screens-component/chat-screen/config";
+import { APP_NAME, CHAT_USER } from "@/components/screens-component/chat-screen/config";
 import { useChatStore } from "@/hooks/store/chat";
 import { Outlet } from "@tanstack/react-router";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -97,7 +97,7 @@ function ChatLayout() {
 				/>
 			)}
 			<ChatHeader
-				title={t("appTitle") as string}
+				title={APP_NAME}
 				subtitle="Government assistance and agriculture insights"
 				rightAvatarUrl={CHAT_USER.avatar}
 				rightLabel={CHAT_USER.name}

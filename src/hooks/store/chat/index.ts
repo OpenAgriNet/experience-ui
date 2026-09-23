@@ -3,7 +3,7 @@ import type {
 	ChatMessage,
 	TextMessage
 } from "@/components/screens-component/chat-screen/components/bubbles/chat-types";
-import { LANGUAGES, type LanguageCode } from "@/components/screens-component/chat-screen/config";
+import { APP_NAME, LANGUAGES, type LanguageCode } from "@/components/screens-component/chat-screen/config";
 
 import {
 	fetchSuggestions,
@@ -466,8 +466,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
 			if (isRateLimitError) {
 				const limitMessage = t
-					? t("limitMessage")
-					: "Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the Bharat-VISTAAR app.";
+					? t("limitMessage", { appName: APP_NAME })
+					: `Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the ${APP_NAME} app.`;
 				set((state) => ({
 					messages: (() => {
 						const backendQid = getErrorQid(error);
@@ -639,8 +639,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
 			if (isRateLimitError) {
 				const limitMessage = t
-					? t("limitMessage")
-					: "Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the Bharat-VISTAAR app.";
+					? t("limitMessage", { appName: APP_NAME })
+					: `Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the ${APP_NAME} app.`;
 				set((state) => ({
 					messages: (() => {
 						const backendQid = getErrorQid(error);

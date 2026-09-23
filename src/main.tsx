@@ -1,5 +1,6 @@
 import "./styles/global.css";
 import { loadRuntimeConfig } from "./lib/config/runtime-config";
+import { applyBranding } from "./lib/config/branding";
 
 window.addEventListener("vite:preloadError", async (event) => {
 	event.preventDefault();
@@ -40,6 +41,7 @@ window.addEventListener("vite:preloadError", async (event) => {
  * depend on configuration and should not wait for it.
  */
 loadRuntimeConfig()
+	.then(() => applyBranding())
 	.then(() => import("./bootstrap"))
 	.then(({ mount }) => mount())
 	.catch((error) => {

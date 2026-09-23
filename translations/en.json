@@ -165,7 +165,6 @@
     "Region-specific and farm-specific recommendations are not available at this time.",
     "Refer to the official SOP documents listed in the app for source references."
   ],
-  "appTitle": "Bharati",
   "settings": "Settings",
   "copyMessage": "Copy message",
   "theme": "Theme",
@@ -212,20 +211,7 @@
     },
     "apiEmptyResponse": {
       "description": "Sorry, I couldn't process your request at this time."
-    },
-    "rateLimitError": {
-      "title": "Please Wait",
-      "description": "Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the Bharat-VISTAAR app."
     }
-  },
-  "maintenance": {
-    "title": "Under Maintenance",
-    "heading": "Bharat-VISTAAR",
-    "subheading": "Under Maintenance",
-    "message": "We're currently performing scheduled maintenance to improve your experience. We'll be back shortly.",
-    "thankyou": "Thank you for your patience!",
-    "estimatedTime": "Estimated downtime: 2-3 hours",
-    "contact": "For urgent queries, please contact support."
   },
   "aiLoaderMessages": [
     "Understanding your question...",
@@ -236,10 +222,9 @@
     "title": "Settings",
     "appearance": "Appearance",
     "lightMode": "Light mode",
-    "darkMode": "Dark mode",
-    "poweredBy": "Powered by Bharat-VISTAAR"
+    "darkMode": "Dark mode"
   },
-  "limitMessage": "Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the Bharat-VISTAAR app.",
+  "limitMessage": "Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the [appName] app.",
   "chatErrorMessage": "Sorry, there was an error processing your request. Please try again.",
   "locationPermission": {
     "title": "Please Allow Location Access",
