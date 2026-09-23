@@ -22,8 +22,7 @@
 		"test:coverage": "vitest run --coverage",
 		"prepare": "husky",
 		"typecheck": "tsc -b",
-		"lint:fix": "eslint . --fix",
-		"new:screen": "tsx scripts/scaffold-screen.ts"
+		"lint:fix": "eslint . --fix"
 	},
 	"dependencies": {
 		"@fingerprintjs/fingerprintjs": "^5.2.0",
