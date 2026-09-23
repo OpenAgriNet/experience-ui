@@ -20,17 +20,11 @@ export const applyBranding = (): void => {
 		document.title = brand.documentTitle;
 	}
 
-	// Same treatment as the other brand assets: a CDN URL is absolute and left
-	// alone, a path is relative to wherever the app is served from.
-	const favicon = brand.favicon && !/^[a-z]+:\/\//i.test(brand.favicon)
-		? `${import.meta.env.BASE_URL}${brand.favicon.replace(/^\//, "")}`
-		: brand.favicon;
-
-	if (favicon) {
+	if (brand.favicon) {
 		const existing = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
 		const link = existing ?? document.createElement("link");
 		link.rel = "icon";
-		link.href = favicon;
+		link.href = brand.favicon;
 		// The markup declares a type for its own SVG fallback. A configured
 		// icon may be any format, so let the browser sniff it instead.
 		link.removeAttribute("type");
