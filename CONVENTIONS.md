@@ -83,8 +83,10 @@ work" are different claims and a reviewer cannot tell them apart afterwards.
   that is decided, match the surrounding file.
 - pre-commit runs lint, typecheck, knip and tests. Hooks can be bypassed with
   `--no-verify`, so CI runs the same checks and is the real gate.
-- CI additionally runs the build, a route-tree freshness guard and a bundle
-  budget.
+- CI additionally runs the build, a route-tree freshness guard, a bundle budget,
+  a dependency vulnerability scan and the container image. Its jobs are chained
+  — `check` first, then `build` and `security`, then `image` — so a broken type
+  never costs a Docker build and no check runs twice.
 
 ## Dependencies
 - **Bun only.** One lockfile, `bun.lock`. npm cannot resolve this tree.

@@ -1,9 +1,20 @@
 name: CI
 
+# One workflow, one job graph:
+#
+#   check ──┬──→ build ──┬──→ image
+#           └──→ security ┘
+#
+# Split across three workflows these would all start at once, and the image
+# workflow would repeat every check the first had already run. Chaining them
+# means a broken type never costs a Docker build, and nothing is run twice.
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,8 +22,10 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
+  # Fastest failure signal, so it goes first and everything else waits on it.
   check:
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +56,19 @@ jobs:
       # either be trivially met or fail on the first honest commit.
       - name: Test
         run: bunx vitest run --coverage
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
 
       - name: Build
         run: bun run build
@@ -80,3 +106,126 @@ jobs:
             echo "$OVERSIZE" | xargs -I{} du -h {}
             exit 1
           fi
+
+  # Scans bun.lock for known CVEs. Runs alongside build rather than after it:
+  # a vulnerable dependency and a broken bundle are independent failures and
+  # you want to see both, but neither is worth running if the code does not
+  # compile.
+  security:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy cache date
+        id: trivy-date
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy binary and vulnerability DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            bin/trivy
+            ~/.cache/trivy
+          key: trivy-${{ runner.os }}-${{ runner.arch }}-${{ steps.trivy-date.outputs.date }}
+          restore-keys: |
+            trivy-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install Trivy (if not cached)
+        run: |
+          if [ ! -x bin/trivy ]; then
+            mkdir -p bin
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b bin
+          fi
+
+      # --ignore-unfixed is what keeps this gate liveable: it only fires when an
+      # upgrade is actually available, so a red run is always actionable.
+      - name: Trivy dependency scan
+        run: |
+          ./bin/trivy fs \
+            --scanners vuln \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --no-progress \
+            .
+
+  # Nothing is published until the code compiles, the bundle is within budget
+  # and the dependencies are clean.
+  image:
+    needs: [build, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy cache date
+        id: trivy-date
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy binary and vulnerability DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            bin/trivy
+            ~/.cache/trivy
+          key: trivy-${{ runner.os }}-${{ runner.arch }}-${{ steps.trivy-date.outputs.date }}
+          restore-keys: |
+            trivy-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install Trivy (if not cached)
+        run: |
+          if [ ! -x bin/trivy ]; then
+            mkdir -p bin
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b bin
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Skipped on a PR: that leg only builds, for early Dockerfile feedback,
+      # and never publishes. Falls back to GITHUB_TOKEN if GHCR_PAT is unset.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Set image owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Set image tag
+        run: echo "TAG=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> "$GITHUB_ENV"
+
+      # Loaded locally first so Trivy scans the exact image that gets pushed.
+      - name: Build (local, unpushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: experience-ui:${{ env.TAG }}
+
+      # Report-only. It does not fail the build: a base-image CVE with no fix
+      # available should not block a deploy, and the dependency scan above is
+      # where an actionable finding stops things.
+      - name: Trivy image scan (report)
+        run: |
+          ./bin/trivy image \
+            --exit-code 0 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --no-progress \
+            "experience-ui:${{ env.TAG }}"
+
+      - name: Tag and push
+        if: github.event_name != 'pull_request'
+        run: |
+          BASE="ghcr.io/${OWNER}/experience-ui"
+          docker tag "experience-ui:${TAG}" "${BASE}:${TAG}"
+          docker tag "experience-ui:${TAG}" "${BASE}:${GITHUB_SHA}"
+          docker tag "experience-ui:${TAG}" "${BASE}:latest"
+          docker push "${BASE}:${TAG}"
+          docker push "${BASE}:${GITHUB_SHA}"
+          docker push "${BASE}:latest"
