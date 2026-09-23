@@ -7,12 +7,12 @@ set -e
 # Fast feedback only. CI runs the same checks and is the actual gate, because
 # a local hook can be skipped with --no-verify.
 
-if ! command -v bun >/dev/null 2>&1; then
-  echo "husky: bun not found, skipping checks"
+if ! command -v npm >/dev/null 2>&1; then
+  echo "husky: npm not found, skipping checks"
   exit 0
 fi
 
-bun run lint
-bun run typecheck
-bun run knip
-bun run test
+npm run lint
+npm run typecheck
+npm run knip
+npm test

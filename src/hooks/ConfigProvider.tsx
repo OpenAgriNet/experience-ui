@@ -1,15 +1,7 @@
-import React, { createContext, useContext, useEffect } from "react";
-import { getConfig, type AppConfig } from "@/lib/config/runtime-config";
+import React, { useEffect } from "react";
+import { getConfig } from "@/lib/config/runtime-config";
 import { useThemeStore } from "@/hooks/store/theme";
 import { THEMES } from "@/components/screens-component/chat-screen/config";
-
-type Config = AppConfig;
-
-interface ConfigContextType {
-  config: Config;
-}
-
-const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
 export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { theme } = useThemeStore();
@@ -54,17 +46,5 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [theme, config]);
 
-  return (
-    <ConfigContext.Provider value={{ config }}>
-      {children}
-    </ConfigContext.Provider>
-  );
-};
-
-export const useConfig = () => {
-  const context = useContext(ConfigContext);
-  if (!context) {
-    throw new Error("useConfig must be used within a ConfigProvider");
-  }
-  return context.config;
+  return <>{children}</>;
 };

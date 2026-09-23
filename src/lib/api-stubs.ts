@@ -17,7 +17,6 @@
 import { getConfig } from '@/lib/config/runtime-config';
 import type {
   ChatResponse,
-  LocationData,
   SuggestionItem,
   TranscriptionResponse,
 } from '@/lib/api-service';
@@ -44,7 +43,7 @@ export const stubsEnabled = (): boolean => {
 };
 
 /** Log every stubbed call so it's obvious nothing real is happening. */
-export const stubLog = (endpoint: string, detail?: unknown): void => {
+const stubLog = (endpoint: string, detail?: unknown): void => {
   console.info(`[stub] ${endpoint}`, detail ?? '');
 };
 
@@ -186,8 +185,3 @@ export const stubGetTranscript = async (sessionId: string) => {
   };
 };
 
-/** Default location used when the browser withholds geolocation. */
-export const STUB_LOCATION: LocationData = {
-  latitude: 18.5204,
-  longitude: 73.8567,
-};

@@ -9,7 +9,7 @@ name: CI
 # workflow would repeat every check the first had already run. Chaining them
 # means a broken type never costs a build, and nothing is run twice.
 #
-# A pull request runs check, build and security. `bun run build` is what
+# A pull request runs check, build and security. `npm run build` is what
 # catches a build error there; the container image is only built on main and
 # on release tags, where it is also published.
 on:
@@ -35,31 +35,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 22
+          cache: npm
 
-      # --frozen-lockfile, so a dependency added without committing bun.lock
-      # fails here rather than resolving to something different in CI.
+      # npm ci installs exactly the lockfile and fails if package.json and
+      # package-lock.json disagree, so a dependency added without committing the
+      # lockfile fails here rather than resolving to something else in CI.
       - name: Install
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: Lint
-        run: bun run lint
+        run: npm run lint
 
       - name: Typecheck
-        run: bun run typecheck
+        run: npm run typecheck
 
       # Dead files and dependency drift. Unused exports are deliberately not
       # gated — see knip.json.
       - name: Dead code
-        run: bun run knip
+        run: npm run knip
 
       # Coverage is printed here rather than uploaded anywhere. There is no
       # threshold yet: the suite is small, and a number invented now would
       # either be trivially met or fail on the first honest commit.
       - name: Test
-        run: bunx vitest run --coverage
+        run: npm run test:coverage
 
   build:
     needs: check
@@ -67,23 +69,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 22
+          cache: npm
 
       - name: Install
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: Build
-        run: bun run build
+        run: npm run build
 
-      # The Docker build cannot regenerate this file — oven/bun:1-alpine has no
-      # Node for the TanStack Router plugin to run under — so a stale committed
-      # copy would ship a wrong route tree with nothing to catch it.
+      # The build regenerates this file, so a diff here means the committed copy
+      # had drifted from src/routes.ts. Committing it keeps the tree readable
+      # and reviewable; this guard keeps it honest.
       - name: Route tree is current
         run: |
           if ! git diff --quiet -- src/routeTree.gen.ts; then
-            echo "::error file=src/routeTree.gen.ts::Route tree is stale. Run 'bun run build' and commit the result."
+            echo "::error file=src/routeTree.gen.ts::Route tree is stale. Run 'npm run build' and commit the result."
             git diff -- src/routeTree.gen.ts
             exit 1
           fi
@@ -111,7 +114,7 @@ jobs:
             exit 1
           fi
 
-  # Scans bun.lock for known CVEs. Runs alongside build rather than after it:
+  # Scans package-lock.json for known CVEs. Runs alongside build rather than after it:
   # a vulnerable dependency and a broken bundle are independent failures and
   # you want to see both, but neither is worth running if the code does not
   # compile.
