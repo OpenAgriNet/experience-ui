@@ -84,9 +84,11 @@ work" are different claims and a reviewer cannot tell them apart afterwards.
 - pre-commit runs lint, typecheck, knip and tests. Hooks can be bypassed with
   `--no-verify`, so CI runs the same checks and is the real gate.
 - CI additionally runs the build, a route-tree freshness guard, a bundle budget,
-  a dependency vulnerability scan and the container image. Its jobs are chained
-  — `check` first, then `build` and `security`, then `image` — so a broken type
-  never costs a Docker build and no check runs twice.
+  a dependency vulnerability scan, and on main and release tags the container
+  image. Its jobs are chained — `check` first, then `build` and `security`,
+  then `image` — so a broken type never costs a build and no check runs twice.
+  A pull request stops after `build`: `bun run build` is what catches a build
+  error there, and an image nobody will publish is not worth the minutes.
 
 ## Dependencies
 - **Bun only.** One lockfile, `bun.lock`. npm cannot resolve this tree.
