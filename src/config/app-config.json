@@ -40,6 +40,14 @@
       "3xl": "1.75rem"
     }
   },
+  "features": {
+    "voiceInput": false,
+    "textToSpeech": false,
+    "imageQuestions": false,
+    "suggestions": false,
+    "geolocation": false,
+    "languageSelector": false
+  },
   "brand": {
     "appName": "Agri Assistant",
     "assistantName": "Assistant",
