@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Copy, Volume2, Check, Pause, Play, RefreshCw } from "lucide-react";
 import { type CardMessage } from "./chat-types";
 import { useChatStore } from "@/hooks/store/chat";
+import { FEATURES } from "@/lib/config/features";
 import { useLanguage } from "@/components/LanguageProvider";
 import { cn } from "@/lib/utils";
 import { BetaLanguageNote } from "./beta-language-note";
@@ -117,6 +118,8 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 							<div className="mx-[-1rem] h-px bg-gray-200 dark:bg-indigo-800/20" />
 							<div className="flex items-center justify-start -ml-3">
 							<div className="flex items-center gap-0">
+								{FEATURES.textToSpeech && (
+								<>
 								<Button
 									variant="ghost"
 									className="group h-10 gap-2 rounded-none pl-6 pr-4 text-sm font-bold text-[var(--primary)] transition-all hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 cursor-pointer"
@@ -133,6 +136,8 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 								</Button>
 
 								<div className="h-5 w-px self-center bg-gray-200 dark:bg-indigo-800/30" />
+								</>
+								)}
 
 								<Button
 									variant="ghost"

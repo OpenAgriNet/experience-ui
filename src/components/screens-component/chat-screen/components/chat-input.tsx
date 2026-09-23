@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { RecordingControls } from "./recording-controls";
 import { Suggestions } from "./suggestions";
+import { FEATURES } from "@/lib/config/features";
 import type { Suggestion } from "../api/suggestions-api";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useChatStore } from "@/hooks/store/chat";
@@ -329,6 +330,7 @@ export function ChatInput({
 
 	return (
 		<div className="bg-[#FFFFFF] dark:bg-[var(--inputBg-dark)] backdrop-blur supports-[backdrop-filter]:bg-[#FFFFFF] dark:supports-[backdrop-filter]:bg-[var(--inputBg-dark)]">
+			{FEATURES.imageQuestions && (
 			<Dialog open={isPestDialogOpen} onOpenChange={setIsPestDialogOpen}>
 				<DialogContent className="max-w-md overflow-hidden rounded-2xl p-0 gap-0 bg-white dark:bg-[var(--background)] border shadow-xl" showCloseButton={false}>
 					{/* Warm amber header — softer than before */}
@@ -452,6 +454,7 @@ export function ChatInput({
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			)}
 
 
 			<div className="mx-auto w-full max-w-3xl px-2 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:px-4">
@@ -461,7 +464,7 @@ export function ChatInput({
 					className="mb-2"
 				/>
 				{/* Voice preview row */}
-				{voice && (
+				{FEATURES.voiceInput && voice && (
 					<div className="mb-2 flex flex-wrap items-center gap-2">
 						<Badge variant="secondary" className="gap-2">
 							<span>Voice message</span>
@@ -477,6 +480,21 @@ export function ChatInput({
 				)}
 
 			<div className="flex items-center gap-2">
+				{/* The send button's animation lives here rather than inside the mic
+				    hint below, which is not rendered when voice input is off. */}
+				<style>{`
+					@keyframes earthquake {
+						0%, 50%, 100% { transform: translate(0, 0) rotate(0deg); }
+						10% { transform: translate(-1px, -1px) rotate(-15deg); }
+						20% { transform: translate(1px, 1px) rotate(15deg); }
+						30% { transform: translate(-1px, -1px) rotate(-15deg); }
+						40% { transform: translate(1px, 1px) rotate(15deg); }
+					}
+					.animate-earthquake {
+						animation: earthquake 1.3s ease-in-out infinite;
+					}
+				`}</style>
+				{FEATURES.voiceInput && (
 				<div className="relative">
 					{micHint && !value.trim() ? (
 						<div className="absolute bottom-full left-0 mb-3 animate-[float_3s_ease-in-out_infinite]">
@@ -488,16 +506,6 @@ export function ChatInput({
 								@keyframes float {
 									0%, 100% { transform: translateY(0); }
 									50% { transform: translateY(-5px); }
-								}
-								@keyframes earthquake {
-									0%, 50%, 100% { transform: translate(0, 0) rotate(0deg); }
-									10% { transform: translate(-1px, -1px) rotate(-15deg); }
-									20% { transform: translate(1px, 1px) rotate(15deg); }
-									30% { transform: translate(-1px, -1px) rotate(-15deg); }
-									40% { transform: translate(1px, 1px) rotate(15deg); }
-								}
-								.animate-earthquake {
-									animation: earthquake 1.3s ease-in-out infinite;
 								}
 							`}</style>
 						</div>
@@ -517,6 +525,7 @@ export function ChatInput({
 						<Mic color="white" className="h-5 w-5" />
 					</Button>
 				</div>
+				)}
 
 <div
   className={cn(
@@ -576,6 +585,7 @@ export function ChatInput({
 							{charCount}/{maxLength}
 						</span>
 					)}
+					{FEATURES.imageQuestions && (
 					<div className="flex shrink-0 items-center pr-2">
     <Button
       type="button"
@@ -591,6 +601,7 @@ export function ChatInput({
       <Camera className="size-5" />
     </Button>
   </div>
+					)}
 
   {/* Grey/Green area around send button */}
   <div
