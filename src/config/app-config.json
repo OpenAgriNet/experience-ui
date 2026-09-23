@@ -2,6 +2,9 @@
   "stubs": {
     "enabled": true
   },
+  "api": {
+    "baseUrl": "/api"
+  },
   "theme": {
     "fonts": {
       "family": "Poppins"

@@ -54,8 +54,8 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-No environment variables are required to boot. The app calls `/api/*` on its
-own origin.
+No environment variables are required to boot. Where the app sends API calls
+is `api.baseUrl` in `config.json`: `/api` on its own origin by default.
 
 There is no Experience API yet, so the client ships with a stub layer turned on
 (`stubs.enabled` in `config.json`). With it on, every endpoint returns canned
