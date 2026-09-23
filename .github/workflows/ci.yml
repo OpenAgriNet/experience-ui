@@ -208,6 +208,9 @@ jobs:
         run: echo "TAG=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> "$GITHUB_ENV"
 
       # Loaded locally first so Trivy scans the exact image that gets pushed.
+      # VITE_BASE_PATH is baked into the bundle, so an image built for a
+      # sub-path serves only from there. The default "/" is the origin root;
+      # set the repository variable to publish for a sub-path instead.
       - name: Build (local, unpushed)
         uses: docker/build-push-action@v6
         with:
@@ -215,6 +218,8 @@ jobs:
           file: Dockerfile
           platforms: linux/amd64
           load: true
+          build-args: |
+            VITE_BASE_PATH=${{ vars.VITE_BASE_PATH || '/' }}
           tags: experience-ui:${{ env.TAG }}
 
       # Report-only. It does not fail the build: a base-image CVE with no fix

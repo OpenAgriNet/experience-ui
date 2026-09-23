@@ -112,6 +112,47 @@ docker run -p 8080:8080 experience-ui
 
 `GET /healthz` returns `ok` for whatever is in front.
 
+### Serving from a sub-path
+
+The client is built for the origin root by default. To mount it under a path on
+a shared domain, build with that path and have the proxy strip the prefix:
+
+```bash
+docker build --build-arg VITE_BASE_PATH=/experience/ -t experience-ui .
+```
+
+```nginx
+location /experience/ {
+    proxy_pass http://experience-ui:8080/;   # the trailing slash strips the prefix
+}
+
+location = /experience {
+    return 301 /experience/;                 # otherwise a bare /experience 404s
+}
+```
+
+Leading and trailing slashes on `VITE_BASE_PATH` both matter. The path is baked
+into the bundle, so **an image built for a sub-path serves only from that
+path** — a deployment that needs two paths builds two images. In CI it comes
+from the `VITE_BASE_PATH` repository variable, defaulting to `/`.
+
+Note that nginx resolves a `proxy_pass` hostname once at config load: restart
+the app container and the proxy keeps the old address until it is reloaded too.
+
+### Brand assets in `config.json`
+
+`logo`, `favicon` and `assistantAvatar` are used exactly as written — nothing
+rewrites them. Two forms work:
+
+```json
+"logo": "brand/logo.png",                      // a file served by this app
+"logo": "https://cdn.example.org/logo.svg"     // anywhere else
+```
+
+For a file, put it under `public/` and reference it **without a leading
+slash**, so it resolves relative to wherever the app is served from. A leading
+slash pins it to the domain root and breaks a sub-path deployment.
+
 ### Configuring a deployment
 
 Everything a deployment changes — name, logo, favicon, colours, which features

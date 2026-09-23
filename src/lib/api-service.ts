@@ -54,6 +54,12 @@ const stripSseKeepAliveMarkers = (chunk: string): string =>
     .join('\n');
 
 
+/**
+ * Where the API lives. `environment.apiUrl` is empty, so it is same-origin;
+ * BASE_URL carries the sub-path the app was built for, if any.
+ */
+const apiBase = `${import.meta.env.BASE_URL}api/`;
+
 class ApiService {
   private apiUrl: string = environment.apiUrl;
   private locationData: LocationData | null = null;
@@ -62,7 +68,7 @@ class ApiService {
 
   constructor() {
     this.axiosInstance = axios.create({
-      baseURL: this.apiUrl,
+      baseURL: this.apiUrl || apiBase,
       headers: {
         'Content-Type': 'application/json'
       }
@@ -99,7 +105,7 @@ class ApiService {
 
       if (onStreamData) {
         // Handle streaming response
-        const response = await fetch(`${this.apiUrl}/api/chat/?${new URLSearchParams(params)}`, {
+        const response = await fetch(`${this.apiUrl || apiBase}chat/?${new URLSearchParams(params)}`, {
           method: 'GET'
         });
 
@@ -150,7 +156,7 @@ class ApiService {
         const config = {
           params,
         };
-        const response = await this.axiosInstance.get('/api/chat/', config);
+        const response = await this.axiosInstance.get('chat/', config);
         const responseQid = response.headers[CHAT_QID_HEADER.toLowerCase()] as string | undefined;
         onResponseStarted?.();
         return {
@@ -193,7 +199,7 @@ class ApiService {
       const formData = new FormData();
       formData.append('image', imageFile);
 
-      const response = await fetch(`${this.apiUrl}/api/image/upload`, {
+      const response = await fetch(`${this.apiUrl || apiBase}image/upload`, {
         method: 'POST',
         body: formData
       });
@@ -245,7 +251,7 @@ class ApiService {
         params,
       };
 
-      const response = await this.axiosInstance.get('/api/suggest/', config);
+      const response = await this.axiosInstance.get('suggest/', config);
       return response.data.map((item: string) => ({
         question: item
       }));
@@ -277,7 +283,7 @@ class ApiService {
       const config = {
       };
 
-      const response = await this.axiosInstance.post('/api/transcribe/', payload, config);
+      const response = await this.axiosInstance.post('transcribe/', payload, config);
       return response.data;
     } catch (error) {
       console.error('Error transcribing audio:', error);
@@ -295,7 +301,7 @@ class ApiService {
       timeout: 120000, // 120s timeout for TTS (can be slow on cold start)
     };
     
-    return this.axiosInstance.post(`/api/tts/`, {
+    return this.axiosInstance.post(`tts/`, {
       session_id: sessionId,
       text: text,
       target_lang: targetLang

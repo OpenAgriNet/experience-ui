@@ -52,9 +52,9 @@
     "appName": "Agri Assistant",
     "assistantName": "Assistant",
     "documentTitle": "Agri Assistant",
-    "logo": "/brand/logo.png",
-    "favicon": "/brand/favicon.svg",
-    "assistantAvatar": "/brand/assistant.svg",
+    "logo": "brand/logo.png",
+    "favicon": "brand/favicon.svg",
+    "assistantAvatar": "brand/assistant.svg",
     "userAvatar": ""
   },
   "languages": [

@@ -47,6 +47,10 @@ const appConfigPlugin: PluginOption = {
 
 // https://vite.dev/config/
 export default defineConfig({
+	// Where the app will be mounted. Baked in at build time, so an image built
+	// with a sub-path only serves from that path. Supplied by the Docker build
+	// arg VITE_BASE_PATH; "/" is the default and means the origin root.
+	base: process.env.VITE_BASE_PATH || "/",
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "src"),

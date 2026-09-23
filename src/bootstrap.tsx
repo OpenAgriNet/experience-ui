@@ -23,6 +23,10 @@ const routeProgress = createRouteProgress();
 
 const router = createRouter({
 	routeTree,
+	// Without this the router matches paths against the origin root, so every
+	// route 404s when the app is served from a sub-path — while the page itself
+	// loads fine, which makes it look like something else.
+	basepath: import.meta.env.BASE_URL,
 	context: { queryClient },
 	defaultPendingComponent: () => (
 		<div className="bg-background flex h-screen w-screen items-center justify-center">
