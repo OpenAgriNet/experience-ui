@@ -2,11 +2,11 @@ import { type LanguageCode } from "../../config";
 
 export type MessageRole = "user" | "assistant" | "system";
 
-export type DeliveryStatus = "sending" | "sent" | "delivered" | "read";
+type DeliveryStatus = "sending" | "sent" | "delivered" | "read";
 
-export type QuickReply = { id: string; label: string; payload?: string };
+type QuickReply = { id: string; label: string; payload?: string };
 
-export type MessageBase = {
+type MessageBase = {
 	id: string;
 	role: MessageRole;
 	createdAt: string;
@@ -32,7 +32,7 @@ export type CardMessage = MessageBase & {
 	responseLanguage?: LanguageCode;
 };
 
-export type QuickRepliesMessage = MessageBase & {
+type QuickRepliesMessage = MessageBase & {
 	type: "quick_replies";
 	prompt?: string;
 	replies: QuickReply[];
@@ -49,7 +49,7 @@ export type AudioMessage = MessageBase & {
 	duration: number;
 };
 
-export type ImageMessage = MessageBase & {
+type ImageMessage = MessageBase & {
 	type: "image";
 	imageUrl: string;
 	caption?: string;

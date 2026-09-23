@@ -31,7 +31,7 @@ import { createContext, useContext, type ReactNode } from "react";
  * built for a different one.
  */
 
-export interface User {
+interface User {
 	username: string;
 	isGuest: boolean;
 }
