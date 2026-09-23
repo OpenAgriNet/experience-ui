@@ -47,11 +47,11 @@ API contract needs better documentation — please open an issue instead.
 
 ## Quick start
 
-Requires [Bun](https://bun.sh).
+Requires [Node](https://nodejs.org) 20 or newer.
 
 ```bash
-bun install
-bun dev          # http://localhost:3000
+npm install
+npm run dev      # http://localhost:3000
 ```
 
 No environment variables are required to boot. The app calls `/api/*` on its
@@ -71,7 +71,7 @@ The hooks live in `.husky/` and are activated by a single local git setting,
 `husky` from its `prepare` script:
 
 ```bash
-bun install
+npm install
 ```
 
 Check that yours are actually active:
@@ -80,7 +80,7 @@ Check that yours are actually active:
 git config core.hooksPath      # should print .husky/_
 ```
 
-If that prints nothing, the hooks are not running. Fix it with `bunx husky`.
+If that prints nothing, the hooks are not running. Fix it with `npx husky`.
 This is worth checking rather than assuming: `core.hooksPath` is local to your
 clone and is not committed, so anyone who installed dependencies before a hook
 existed silently has no hooks.

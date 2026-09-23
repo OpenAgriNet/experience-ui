@@ -87,13 +87,15 @@ work" are different claims and a reviewer cannot tell them apart afterwards.
   a dependency vulnerability scan, and on main and release tags the container
   image. Its jobs are chained — `check` first, then `build` and `security`,
   then `image` — so a broken type never costs a build and no check runs twice.
-  A pull request stops after `build`: `bun run build` is what catches a build
+  A pull request stops after `build`: `npm run build` is what catches a build
   error there, and an image nobody will publish is not worth the minutes.
 
 ## Dependencies
-- **Bun only.** One lockfile, `bun.lock`. npm cannot resolve this tree.
-- `bun install --frozen-lockfile` in CI, so a dependency added without
-  committing the lockfile fails there rather than silently resolving to
-  something else.
+- **Node and npm.** One lockfile, `package-lock.json`.
+- `npm ci` in CI, which installs exactly the lockfile and fails when it and
+  `package.json` disagree, so a dependency added without committing the lockfile
+  fails there rather than silently resolving to something else.
+- **Never `--legacy-peer-deps`.** A peer conflict npm reports is usually real.
+  Fix the versions.
 - A new dependency needs a reason in the commit body. This repo is a reference
   implementation; every dependency is one an adopter inherits.

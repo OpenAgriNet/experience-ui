@@ -29,21 +29,22 @@ a feature flag flips, update it in the same change.
 - Routing: TanStack Router, virtual file routes (`src/routes.ts`)
 - State: Zustand
 - Styling: Tailwind CSS v4, shadcn/ui components in `src/components/ui`
-- Package manager: **Bun only.** npm cannot resolve this dependency tree without
-  `--legacy-peer-deps`; Bun resolves it with no flags
+- Runtime and package manager: **Node 22 and npm.** One lockfile,
+  `package-lock.json`. Nothing runs a JavaScript runtime in production — the
+  deployed artifact is static files served by nginx
 - Tests: Vitest, with happy-dom where a test needs a real `document`
 - Dead code: knip
 - Serving: nginx in a container (`Dockerfile`, `nginx.conf`)
 
 ## Build & Run
 ```
-bun install              # also activates git hooks, via the prepare script
-bun dev                  # http://localhost:3000
-bun run lint             # eslint
-bun run typecheck        # tsc -b
-bun run knip             # dead files and dependency drift
-bun run test             # vitest
-bun run build            # tsc -b && vite build
+npm install              # also activates git hooks, via the prepare script
+npm run dev              # http://localhost:3000
+npm run lint             # eslint
+npm run typecheck        # tsc -b
+npm run knip             # dead files and dependency drift
+npm test                 # vitest
+npm run build            # tsc -b && vite build
 docker compose up --build   # the deployable image, http://localhost:8080
 ```
 
@@ -114,9 +115,9 @@ src/
 - **`src/routes.ts` is loaded by `vite.config.ts` as a string path.** No static
   analysis reaches it. It is declared as a knip entry point for this reason;
   without that, knip calls it and `@tanstack/virtual-file-routes` dead.
-- **`routeTree.gen.ts` is generated and committed, and must stay committed.**
-  The Docker build cannot regenerate it — `oven/bun:1-alpine` has no Node for
-  the router plugin. CI has a guard.
+- **`routeTree.gen.ts` is generated and committed.** The build regenerates it,
+  so a diff after `npm run build` means it had drifted from `src/routes.ts`. CI
+  guards this.
 - **Configuration is read at module-init time**, so `main.tsx` loads config and
   then *dynamically* imports `bootstrap.tsx`. A static import would evaluate the
   whole graph first and `getConfig()` would throw. The `.then()` chain is not
@@ -127,11 +128,17 @@ src/
 - **`विस्तार` / `વિસ્તાર` is the ordinary word for *area*** in Hindi, Marathi and
   Gujarati. Find-and-replace on brand names corrupts legitimate copy. Read every
   occurrence.
-- **npm cannot install this repo** without `--legacy-peer-deps`; it crashes with
-  `Cannot read properties of null (reading 'edgesOut')`. Bun is the only
-  supported package manager, and `bun.lock` is the only lockfile.
+- **Never reach for `--legacy-peer-deps`.** It hides real version conflicts —
+  one was hiding behind it here, `@vitest/coverage-v8` pinned a minor behind
+  `vitest`. If npm refuses to resolve something, the answer is an upgrade or
+  pnpm, not the flag.
+- **The router plugin needs Node.** `vite.config.ts` passes
+  `virtualRouteConfig` as a path, so the generator loads that TypeScript file
+  through `tsx`, a Node loader. Under Bun it failed with
+  `Cannot find package 'tsx:'`, and only sometimes — depending on whether the
+  generator's cache decided to re-run.
 - **knip's unused-export list is not a task list.** `src/components/ui` is a
   vendored component kit kept whole. The gate covers files and dependencies only.
-- **Verify with `bun dev` as well as `bun run build`.** A Vite rule about
+- **Verify with `npm run dev` as well as `npm run build`.** A Vite rule about
   `public/` imports once shipped in a PR that built and served correctly from
   `dist/` but broke the dev server.
