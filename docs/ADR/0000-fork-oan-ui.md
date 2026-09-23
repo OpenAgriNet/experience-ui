@@ -10,6 +10,11 @@
 
 ## 1. Context and Problem Statement
 
+The DSS answers agricultural questions. Nothing in it faces a person: it takes a
+turn and answers it, holding no users, no sessions, no history and no interface.
+**This repository is that interface** — the screen through which the DSS's
+capability reaches someone who wants to use it.
+
 The Experience Layer needs a reference client: a neutral, configurable web
 client that shows what the Experience API and DSS do, and serves as a worked
 example for teams building their own.
@@ -68,8 +73,9 @@ Three conditions make this a fork rather than a copy:
    and upstream authorship is never in question.
 2. **Attribution is in place before any refactoring** — `LICENSE` retains the
    upstream copyright line as MIT requires.
-3. **The inherited debt is written down, not discovered** — catalogued in
-   §6 below, surveyed at the fork point before any refactoring.
+3. **The starting position is recorded, not reconstructed later** — the fork
+   point was surveyed before any refactoring, so what we began with is a matter
+   of record rather than of memory. Summarised in §7.
 
 ### 4.1 Why conditions 1–3 are load-bearing
 
@@ -98,7 +104,7 @@ an hour at fork time and cannot be reconstructed later.
 
 **Bad, and accepted**
 
-- We inherit a codebase we did not write, with 19 catalogued debt items.
+- We inherit a codebase we did not write, and its accumulated decisions with it.
 - We own a permanent divergence. This is a **hard fork**: no commitment to merge
   back, and upstream is under no obligation to accept anything.
 - The client carries a starter-template lineage (TanStack Router boilerplate)
@@ -117,57 +123,74 @@ an hour at fork time and cannot be reconstructed later.
 
 ---
 
-## 6. What we inherited
+## 6. Where the client stands today
 
-Surveyed at `50aa452` before any refactoring, so that the starting position is a
-record rather than something later archaeology has to reconstruct. This is a
-snapshot, not a task list — remediation is tracked in the issue tracker, and
-this section is not updated as items are fixed.
+The fork kept a working chat client and the surfaces around it. What each part
+is doing right now:
 
-Upstream is a production tenant application and was never required to be
-configurable or unbranded. Every item below is a reasonable choice there and a
-problem here.
+### 6.1 Working
 
-### 6.1 Blocking a neutral deployment
-
-| Finding | Location |
+| Feature | Notes |
 |---|---|
-| **RSA public key hardcoded in source.** A PEM template literal, verified with `jose.jwtVerify`. Any token not signed by bharat-oan-api's private key fails, `user` stays `null`, and the app renders a lock screen. No runtime override exists — not in `public/`, not via env. Identical on `bh-dev`, so no branch avoids it. | `src/contexts/AuthContext.tsx:78-86` |
-| **Configuration is build-time, not runtime.** `config.json` is statically imported, so Vite inlines it into a content-hashed bundle. `src/styles/global.css:26` reads *"Palette tokens driven by config.json"* — the intent was runtime configuration; the implementation never got there. | `src/hooks/ConfigProvider.tsx:2`, `src/components/screens-component/chat-screen/config.ts:1` |
-| **Vite env vars bake at build time**, and the Dockerfile has no entrypoint script (`CMD ["nginx", "-g", "daemon off;"]`). Nothing substitutes values at container start, so "deployed as-is" and "configured via `.env`" are mutually exclusive. | `Dockerfile` |
+| **Streaming chat** | The client sends a question and reads the answer from the response body as it arrives. Answers are canned until the Experience API exists |
+| **Markdown answers** | `react-markdown` + `remark-gfm`, with links forced to `target="_blank" rel="noopener noreferrer"` |
+| **Copy an answer** | Client-side |
+| **Retry a failed answer** | Client-side |
+| **Light and dark theme** | Client-side |
+| **Location** | The browser is asked once for the user's coordinates, which are attached to each chat request. A denied prompt is a normal outcome: the request is sent without them |
+| **Runtime configuration** | Brand, theme and the flags below are read from `/config.json` at boot and can be changed on a running deployment without a rebuild |
 
-### 6.2 Tenant branding
+### 6.2 Retained and switched off
 
-| Finding | Location |
+Each of these is implemented and has a stub standing in for its endpoint. None
+is reachable, because nothing can serve it yet. They are off in configuration
+rather than removed, so that enabling one when the capability arrives is a
+configuration change rather than a rewrite.
+
+| Feature | Waiting on |
 |---|---|
-| Logo path hardcoded to `/maha-logo.svg` | `src/components/screens-component/layouts/chat-header.tsx:7` |
-| `<title>Bharat-VISTAAR</title>` and favicon in static HTML, outside React and outside config | `index.html` |
-| **Two parallel string systems, both build-time.** `config.json` → `languageTexts` (10 languages) *and* `translations/*.json` (10 files, statically imported). All 10 translation files carry VISTAAR brand strings. Neutralizing copy means both systems, 20 files. | `config.json`, `translations/`, `src/components/LanguageProvider.tsx:2-11` |
-| `notificationApiUrl` defaults to `https://registry-vistaar.da.gov.in/notification-api` — a cross-origin call to a tenant government host on every page load. Failure is swallowed, so it is not user-visible, but it should not fire at all. | `src/lib/config/environment.ts:3` |
+| **Voice input** | Transcription in the Experience API |
+| **Spoken answers** | Text-to-speech in the Experience API |
+| **Image questions** | The DSS image content item, and upload in the Experience API |
+| **Follow-up suggestions** | A suggestions endpoint |
+| **Languages other than English** | A DSS that answers in them. The client is pinned to English; the other nine remain in the translation files |
 
-### 6.3 Client/backend contract
+### 6.3 The rule this expresses
 
-| Finding | Location |
-|---|---|
-| **The user's question travels in a URL query string** (`GET /api/chat/?query=...`). It lands in access logs, browser history and referrer headers, and is capped by proxy URL limits. Should be a POST body. | `src/lib/api-service.ts` |
-| **Image analysis is triggered by a magic string.** Upload returns an `image_id`, then the client sends the literal text `please do the pest analysis for this image <id>` as an ordinary chat query for the backend to string-match. The DSS contract defines a typed image content item for this. | `src/lib/api-service.ts:445` |
-| `apiUrl` is a hardcoded empty string; all calls are root-relative. Not wrong — it makes the client same-origin by construction — but there is *no* configuration point for the backend URL, and routing `/api` is therefore an ingress concern. | `src/lib/config/environment.ts:2` |
-| `nginx.conf` has no `/api` proxy (`try_files $uri $uri/ /index.html` only). On its own the container answers `/api/chat/` with `index.html` at HTTP 200 — HTML where JSON is expected. Something in front of the container does the split. | `nginx.conf` |
+A control is shown only when it can do something. A surface with no capability
+behind it is switched off rather than left present and inert — a client that
+appears to offer a feature it cannot deliver misrepresents the platform it
+exists to demonstrate.
 
-### 6.4 Repository hygiene
+This also sets which stubs are worth having. A canned response earns its place
+where the point is to exercise the surface with dummy data, which is true of
+chat and of nothing else. Everywhere else a flag is enough, and a stub as well
+would be redundant.
 
-| Finding | Location |
-|---|---|
-| `package.json` is `"name": "react-boilerplate"`, `"version": "0.0.0"`, with no `license` field — tooling and SBOM scanners see an unlicensed boilerplate | `package.json` |
-| README is the untouched starter template ("React + TanStack Router Starter… for large, scalable admin dashboards"). It never described OAN-UI. | `README.md` |
-| **`chatBotIcon.svg` is 8.3 MB** and ships to every user on first load. `maha-logo.svg` is a further 124 KB. | `public/` |
-| **Two lockfiles**: `bun.lock` (221 KB) and `package-lock.json` (314 KB). README mandates Bun; the Dockerfile runs `rm -f package-lock.json && npm install --legacy-peer-deps --force`. Three package-manager stories in one repo. | root, `Dockerfile` |
-| **`VITE_API_URL` is dead.** The build workflow passes it in; it is referenced nowhere in `src/`. Someone wired the pipeline for a variable the code never reads — people may believe it works. | `.github/workflows/build.yml:53` |
-| Env guards commented out, so missing configuration fails silently at runtime rather than loudly at boot | `src/config/env.ts:16-17` |
-| `CODEOWNERS` still assigns OAN-UI's owners (`* @shashank-kenpath @digpalsinghk`, *"ownership for OAN-UI"*). PR governance in this repo gates on people who do not own it. | `.github/CODEOWNERS` |
-| `desgin/desgin.xml` — misspelled directory | `desgin/` |
+---
 
-### 6.5 Deliberate upstream choices we are keeping
+## 7. What we started from
+
+The fork point was surveyed at `50aa452` before any refactoring. What it found,
+in summary: configuration was baked in at build time despite the code reading as
+though it were not, branding was hardcoded across source, static HTML and ten
+translation files, and a tenant's public key was compiled into the bundle, so a
+token it did not sign left the app on a lock screen.
+
+None of that survives. Configuration is fetched at boot and can be changed on a
+running deployment; branding is part of it; identity is a single seam that
+prescribes no method. §6 describes what the client is now, and
+`git diff fork-point..main` is the full record of how it got there.
+
+Each of those was a reasonable choice in a production tenant application, which
+was never required to be configurable or unbranded. They are noted here because
+the starting position is worth knowing, not as a list of complaints.
+
+The client/backend contract is deliberately not recorded here. It changes with
+the Experience API, and writing down a shape we are about to replace would only
+mislead.
+
+### 7.1 Deliberate upstream choices we are keeping
 
 Not debt. Recorded so they are not "cleaned up" by someone who assumes otherwise.
 
