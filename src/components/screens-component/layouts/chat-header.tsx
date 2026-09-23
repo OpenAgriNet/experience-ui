@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/components/LanguageProvider";
 import { BRAND_LOGO, LANGUAGES } from "@/components/screens-component/chat-screen/config";
+import { FEATURES } from "@/lib/config/features";
 import { LanguageSelectionDropdown } from "@/components/screens-component/chat-screen/components/language-selection-dialog";
 const settingsIcon = "/assets/settings.svg";
 const langIcon = "/assets/langIcon.svg";
@@ -37,6 +38,8 @@ export function ChatHeader(props: ChatHeaderProps) {
 
 				{/* Right: Language + Settings */}
 				<div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+					{FEATURES.languageSelector && (
+					<>
 					{/* Language Dropdown */}
 					<LanguageSelectionDropdown>
 						{/* Desktop Language Button */}
@@ -60,6 +63,8 @@ export function ChatHeader(props: ChatHeaderProps) {
 							<img src={langIcon} alt="Language" className="h-6 w-6" />
 						</Button>
 					</LanguageSelectionDropdown>
+					</>
+					)}
 
 					<Button 
 						variant="ghost" 

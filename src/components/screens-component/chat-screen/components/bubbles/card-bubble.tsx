@@ -7,7 +7,6 @@ import { useChatStore } from "@/hooks/store/chat";
 import { FEATURES } from "@/lib/config/features";
 import { useLanguage } from "@/components/LanguageProvider";
 import { cn } from "@/lib/utils";
-import { BetaLanguageNote } from "./beta-language-note";
 import { SafeMarkdown } from "./safe-markdown";
 
 export function CardBubble({ message }: { readonly message: CardMessage }) {
@@ -26,7 +25,6 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 	const isThisPlaying = currentlyPlayingId === message.id && ttsStatus === "playing";
 	const isThisPaused = currentlyPlayingId === message.id && ttsStatus === "paused";
 	const isRetryableError = message.isError && message.failedUserText;
-	const responseLanguage = message.responseLanguage ?? language;
 
 	const handleListen = async () => {
 		try {
@@ -78,7 +76,6 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 						<div className={cn("prose prose-sm dark:prose-invert max-w-none text-base leading-relaxed text-foreground dark:text-[var(--aiBubbleText-dark)] break-words overflow-wrap-anywhere", message.isError && "text-red-600 dark:text-red-400 font-medium")}>
 							<SafeMarkdown>{message.body}</SafeMarkdown>
 						</div>
-						<BetaLanguageNote language={responseLanguage} />
 
 						{/* Retry Button for error messages */}
 						{isRetryableError && (

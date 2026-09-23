@@ -1,13 +1,9 @@
 import { cn } from "@/lib/utils";
 import { type TextMessage } from "./chat-types";
-import { useLanguage } from "@/components/LanguageProvider";
-import { BetaLanguageNote } from "./beta-language-note";
 import { SafeMarkdown } from "./safe-markdown";
 
 export function TextBubble({ message }: { message: TextMessage }) {
-	const { language } = useLanguage();
 	const isUser = message.role === "user";
-	const responseLanguage = message.responseLanguage ?? language;
 
 	return (
 		<div
@@ -21,7 +17,6 @@ export function TextBubble({ message }: { message: TextMessage }) {
 			<div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
 				{isUser ? message.text : <SafeMarkdown>{message.text}</SafeMarkdown>}
 			</div>
-			{!isUser ? <BetaLanguageNote language={responseLanguage} /> : null}
 		</div>
 	);
 }
