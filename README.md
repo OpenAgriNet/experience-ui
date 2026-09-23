@@ -155,6 +155,8 @@ happens to expire. Content-hashed assets under `/assets/` are cached for a year;
 | Doc | Contents |
 | --- | --- |
 | [`docs/ADR/`](docs/ADR/) | Accepted architecture decisions |
+| [`AGENTS.md`](AGENTS.md) | What this repo is, its stack, layout, testing patterns and gotchas |
+| [`CONVENTIONS.md`](CONVENTIONS.md) | Naming, git workflow, commit format, linting |
 
 ## License
 
