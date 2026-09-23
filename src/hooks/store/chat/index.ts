@@ -4,15 +4,12 @@ import type {
 	TextMessage
 } from "@/components/screens-component/chat-screen/components/bubbles/chat-types";
 import { APP_NAME, LANGUAGES, type LanguageCode } from "@/components/screens-component/chat-screen/config";
+import { FEATURES } from "@/lib/config/features";
 
-import {
-	fetchSuggestions,
-	type Suggestion
-} from "@/components/screens-component/chat-screen/api/suggestions-api";
+import { type Suggestion } from "@/components/screens-component/chat-screen/api/suggestions-api";
 import apiService from "@/lib/api-service";
 import { shuffle, randomPick } from "@/lib/qa-utils";
 import type { ToastType } from "@/components/screens-component/chat-screen/components/toast";
-import { environment } from "@/lib/config/environment";
 import { neutralizeHtmlMarkup } from "@/lib/security/html";
 
 
@@ -62,7 +59,6 @@ type ChatStore = {
 	setIsTranscribing: (value: boolean) => void;
 	setSuggestions: (suggestions: Suggestion[]) => void;
 	clearSuggestions: () => void;
-	fetchSuggestionsForMessage: (messageId: string) => Promise<void>;
 	generateQuickActions: (t: any) => void;
 	playTTS: (text: string, language: string, messageId: string) => Promise<void>;
 	pauseTTS: () => void;
@@ -292,6 +288,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 	setDraft: (value) => set(() => ({ draft: value })),
 
 	fetchLocation: (t) => {
+		// Guarded here as well as at the layout, because sendText and sendImage
+		// call this on every message — gating only the mount would still prompt
+		// on the first question.
+		if (!FEATURES.geolocation) return Promise.resolve();
+
 		if (typeof window === "undefined" || !navigator.geolocation) {
 			set({
 				toast: {
@@ -445,7 +446,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 				isInputLocked: false
 			}));
 
-			if (!environment.suggestionsDisabled) {
+			if (FEATURES.suggestions) {
 				const suggestions = await apiService.getSuggestions(currentSession, language);
 				set({
 					suggestions: suggestions.map((s) => ({
@@ -500,18 +501,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 				}));
 
 			}
-		}
-	},
-
-	fetchSuggestionsForMessage: async (messageId) => {
-		set({ isFetchingSuggestions: true });
-		try {
-			const suggestions = await fetchSuggestions(messageId);
-			set({ suggestions, isFetchingSuggestions: false });
-		} catch (error) {
-			console.error("Error fetching suggestions:", error);
-			set({ isFetchingSuggestions: false });
-			// set({ toast: { message: "Failed to load suggestions.", type: "error" } });
 		}
 	},
 
@@ -618,7 +607,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 				isInputLocked: false
 			}));
 
-			if (!environment.suggestionsDisabled) {
+			if (FEATURES.suggestions) {
 				const suggestions = await apiService.getSuggestions(currentSession, language);
 				set({
 					suggestions: suggestions.map((s) => ({

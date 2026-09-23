@@ -50,6 +50,10 @@ function ChatLayout() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 
 	useEffect(() => {
+		// Nothing consumes the coordinates yet, so asking for them costs the
+		// user a decision and buys nothing.
+		if (!FEATURES.geolocation) return;
+
 		const cachedLocation = getCachedLocation();
 		if (cachedLocation) {
 			apiService.setLocationData({
