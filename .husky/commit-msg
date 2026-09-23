@@ -1,0 +1,37 @@
+#!/bin/sh
+set -e
+
+# Enforces the commit convention in CONVENTIONS.md:
+#
+#   <type>: <summary in imperative mood> [#<issue-no>]
+#
+# The issue number is encouraged but not required. Requiring it would block
+# commits that have no tracker issue — tooling changes, typo fixes — and what
+# people do then is write [#0], which is worse than nothing.
+
+subject=$(head -n 1 "$1")
+
+# Generated messages are not ours to police.
+case "$subject" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|refactor|chore|test|docs|build|ci|perf)(\(.+\))?: .{3,}$'; then
+  echo "commit-msg: the subject line does not match the convention."
+  echo
+  echo "  got:      $subject"
+  echo "  expected: <type>: <summary in imperative mood> [#<issue-no>]"
+  echo
+  echo "  type is one of: feat fix refactor chore test docs build ci perf"
+  echo "  scope is optional:  fix(auth): ..."
+  echo "  issue number is optional but encouraged:  fix: stop the flicker [#42]"
+  echo
+  echo "See CONVENTIONS.md. To bypass deliberately: git commit --no-verify"
+  exit 1
+fi
+
+# Long subjects are a smell, not an error.
+length=$(printf '%s' "$subject" | wc -c | tr -d ' ')
+if [ "$length" -gt 72 ]; then
+  echo "commit-msg: subject is ${length} characters; 72 or fewer reads better in git log."
+fi

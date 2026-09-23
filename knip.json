@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unjs.io/schema/knip.json",
+
+  // src/routes.ts is loaded by vite.config.ts as a string path, so no static
+  // analysis reaches it. Declared as an entry point or knip calls it dead.
+  "entry": ["src/routes.ts", "src/__tests__/**/*.test.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+
+  // knip does not follow CSS imports, so anything referenced only from
+  // global.css looks unused: tailwindcss, tw-animate-css and the typography
+  // plugin are all @import-ed or @plugin-ed there. The rest are tooling
+  // dependencies resolved by config files rather than by source.
+  "ignoreDependencies": [
+    "tailwindcss",
+    "tw-animate-css",
+    "@tailwindcss/typography",
+    "eslint-config-prettier",
+    "baseline-browser-mapping",
+    "caniuse-lite"
+  ]
+}
