@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # --frozen-lockfile, so a dependency added without committing bun.lock
+      # fails here rather than resolving to something different in CI.
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      # Dead files and dependency drift. Unused exports are deliberately not
+      # gated — see knip.json.
+      - name: Dead code
+        run: bun run knip
+
+      # Coverage is printed here rather than uploaded anywhere. There is no
+      # threshold yet: the suite is small, and a number invented now would
+      # either be trivially met or fail on the first honest commit.
+      - name: Test
+        run: bunx vitest run --coverage
+
+      - name: Build
+        run: bun run build
+
+      # The Docker build cannot regenerate this file — oven/bun:1-alpine has no
+      # Node for the TanStack Router plugin to run under — so a stale committed
+      # copy would ship a wrong route tree with nothing to catch it.
+      - name: Route tree is current
+        run: |
+          if ! git diff --quiet -- src/routeTree.gen.ts; then
+            echo "::error file=src/routeTree.gen.ts::Route tree is stale. Run 'bun run build' and commit the result."
+            git diff -- src/routeTree.gen.ts
+            exit 1
+          fi
+
+      # This client shipped an 8.66 MB SVG to every visitor for its whole life
+      # upstream. The budget is what would have caught it on the commit that
+      # added it, rather than months later.
+      - name: Bundle budget
+        run: |
+          TOTAL_KB=$(du -sk dist | cut -f1)
+          MAX_TOTAL_KB=6144
+          MAX_ASSET_KB=2048
+
+          echo "dist total: ${TOTAL_KB} KB (budget ${MAX_TOTAL_KB} KB)"
+          if [ "$TOTAL_KB" -gt "$MAX_TOTAL_KB" ]; then
+            echo "::error::dist is ${TOTAL_KB} KB, over the ${MAX_TOTAL_KB} KB budget."
+            du -ak dist | sort -rn | head -20
+            exit 1
+          fi
+
+          OVERSIZE=$(find dist -type f -size +${MAX_ASSET_KB}k)
+          if [ -n "$OVERSIZE" ]; then
+            echo "::error::These files are over the ${MAX_ASSET_KB} KB per-asset budget:"
+            echo "$OVERSIZE" | xargs -I{} du -h {}
+            exit 1
+          fi
