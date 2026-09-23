@@ -68,6 +68,7 @@
 		"eslint-plugin-react-refresh": "^0.4.26",
 		"eslint-plugin-simple-import-sort": "^12.1.1",
 		"globals": "^16.5.0",
+		"happy-dom": "^20.14.5",
 		"husky": "^9.1.7",
 		"postcss": "^8.5.28",
 		"prettier": "^3.9.8",

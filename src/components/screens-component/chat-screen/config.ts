@@ -26,14 +26,18 @@ export const DEFAULT_LANGUAGE: LanguageCode = rootConfig.defaultLanguage as Lang
 // CHAT CONFIGURATION
 // ============================================================================
 
+export const APP_NAME: string = rootConfig.brand.appName;
+
+export const BRAND_LOGO: string = rootConfig.brand.logo;
+
 export const CHAT_ASSISTANT = {
-	name: "Bharati",
-	avatar: rootConfig.icons.assistant
+	name: rootConfig.brand.assistantName,
+	avatar: rootConfig.brand.assistantAvatar
 };
 
 export const CHAT_USER = {
 	name: "",
-	avatar: rootConfig.icons.user
+	avatar: rootConfig.brand.userAvatar
 };
 
 export const THEMES = {

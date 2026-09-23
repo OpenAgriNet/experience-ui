@@ -40,9 +40,14 @@
       "3xl": "1.75rem"
     }
   },
-  "icons": {
-    "assistant": "/brand/assistant.svg",
-    "user": ""
+  "brand": {
+    "appName": "Agri Assistant",
+    "assistantName": "Assistant",
+    "documentTitle": "Agri Assistant",
+    "logo": "/brand/logo.svg",
+    "favicon": "/brand/favicon.svg",
+    "assistantAvatar": "/brand/assistant.svg",
+    "userAvatar": ""
   },
   "languages": [
     {

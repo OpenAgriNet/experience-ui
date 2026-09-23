@@ -3,6 +3,7 @@ import { Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/LanguageProvider";
+import { CHAT_ASSISTANT } from "../config";
 
 const deleteIcon = "/assets/delete.svg";
 const micIcon = "/assets/micIcon.svg";
@@ -95,7 +96,7 @@ export function RecordingControls({
 			{/* Top Pill Status - Absolute Positioned on the border */}
 			<div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 transform">
 				<div className="whitespace-nowrap rounded-full bg-blue-50 px-6 py-1.5 text-xs font-medium text-blue-600 shadow-sm border border-blue-100">
-					{t("recordingListening", { botName: "Bharati" })}
+					{t("recordingListening", { botName: CHAT_ASSISTANT.name })}
 				</div>
 			</div>
 
