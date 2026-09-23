@@ -1,13 +1,14 @@
-import { create } from "zustand";
+import { create, type StoreApi } from "zustand";
 import type {
+	CardMessage,
 	ChatMessage,
 	TextMessage
 } from "@/components/screens-component/chat-screen/components/bubbles/chat-types";
-import { APP_NAME, LANGUAGES, type LanguageCode } from "@/components/screens-component/chat-screen/config";
+import { LANGUAGES, type LanguageCode } from "@/components/screens-component/chat-screen/config";
 import { FEATURES } from "@/lib/config/features";
 
 import { type Suggestion } from "@/components/screens-component/chat-screen/api/suggestions-api";
-import apiService from "@/lib/api-service";
+import apiService, { ApiError, type ChatStreamHandlers, type FinalAnswer } from "@/lib/api-service";
 import { shuffle, randomPick } from "@/lib/qa-utils";
 import type { ToastType } from "@/components/screens-component/chat-screen/components/toast";
 import { neutralizeHtmlMarkup } from "@/lib/security/html";
@@ -193,58 +194,108 @@ function makeUserMessage(text: string): TextMessage {
 	};
 }
 
-function makeAssistantMessage(
-	text: string,
-	isError?: boolean,
-	showListenRow = false,
-	qid?: string,
-	failedUserText?: string,
-	failedLanguage?: string,
-	responseLanguage?: LanguageCode
-): ChatMessage {
-	return {
-		id: crypto.randomUUID(),
-		role: "assistant",
-		type: "card",
-		qid,
-		body: text,
-		createdAt: new Date().toISOString(),
-		showListenRow,
-		isError,
-		failedUserText,
-		failedLanguage,
-		responseLanguage
-	};
-}
-
 function getResponseLanguage(language: string): LanguageCode | undefined {
 	return language in LANGUAGES ? (language as LanguageCode) : undefined;
 }
 
-function getErrorQid(error: unknown): string | undefined {
-	const qid = (error as { qid?: unknown })?.qid;
-	return typeof qid === "string" && qid.trim() ? qid : undefined;
+/** The assistant's final text: every content item, in order, joined by a blank line (§4.1). */
+function answerText(answer: FinalAnswer): string {
+	return answer.content.map((item) => item.text).join("\n\n");
 }
 
-function warnMissingBackendQid(context: string, fallbackQid: string) {
-	console.warn(`Backend did not return X-QID for ${context}; using message id fallback for telemetry`, {
-		fallbackQid
-	});
+/** Replace the message with `card.id`, or append it when it is not there yet. */
+function upsertMessage(messages: ChatMessage[], card: ChatMessage): ChatMessage[] {
+	const index = messages.findIndex((m) => m.id === card.id);
+	if (index === -1) return [...messages, card];
+	const updated = [...messages];
+	updated[index] = card;
+	return updated;
 }
 
-function attachQidToLatestAssistantMessage(messages: ChatMessage[], qid?: string): ChatMessage[] {
-	if (!qid) return messages;
+type TurnContext = {
+	/** What Retry sends again. */
+	failedUserText: string;
+	language: string;
+	responseLanguage?: LanguageCode;
+	/** Shown when the turn failed and the API sent no words of its own. */
+	genericErrorMessage: string;
+};
 
-	for (let index = messages.length - 1; index >= 0; index--) {
-		const message = messages[index];
-		if (message?.role === "assistant" && message.type === "card") {
-			const updated = [...messages];
-			updated[index] = { ...message, qid };
-			return updated;
+/**
+ * Run one turn and keep the assistant bubble in step with the stream.
+ *
+ * The bubble is drawn on the first delta, not on `started`: until there is
+ * text the typing indicator stays, where an empty bubble would replace it with
+ * nothing. Its id is the API's `assistantMessageId`. On `completed` the
+ * streamed text is replaced by the answer's `content`, which is authoritative
+ * (§5.1). Resolves true when the turn produced an answer without `error`.
+ */
+async function streamTurn(
+	set: StoreApi<ChatStore>["setState"],
+	send: (handlers: ChatStreamHandlers) => Promise<FinalAnswer>,
+	ctx: TurnContext
+): Promise<boolean> {
+	let started: { assistantMessageId: string; traceId: string } | null = null;
+	let cardId: string | null = null;
+	let createdAt: string | null = null;
+	let streamingText = "";
+
+	const draw = (card: Omit<CardMessage, "id" | "role" | "type" | "createdAt">) => {
+		cardId ??= started?.assistantMessageId ?? crypto.randomUUID();
+		createdAt ??= new Date().toISOString();
+		const message: CardMessage = {
+			id: cardId,
+			role: "assistant",
+			type: "card",
+			createdAt,
+			traceId: started?.traceId,
+			responseLanguage: ctx.responseLanguage,
+			...card
+		};
+		set((state) => ({ messages: upsertMessage(state.messages, message), isAssistantTyping: false }));
+	};
+
+	const drawFailure = (traceId: string | undefined, retryable: boolean, body: string) =>
+		draw({
+			body,
+			traceId,
+			isError: true,
+			showListenRow: false,
+			failedUserText: retryable ? ctx.failedUserText : undefined,
+			failedLanguage: retryable ? ctx.language : undefined
+		});
+
+	try {
+		const answer = await send({
+			onStarted: (event) => {
+				started = event;
+			},
+			onDelta: (text) => {
+				streamingText += text;
+				draw({ body: streamingText, showListenRow: true });
+			}
+		});
+
+		const text = answerText(answer);
+		if (answer.error) {
+			// The DSS finished the turn but something it needed was down (§5.3).
+			// Its own words when it sent any, the client's otherwise.
+			drawFailure(answer.error.traceId ?? answer.traceId, answer.error.retryable, text || ctx.genericErrorMessage);
+			set({ isInputLocked: false });
+			return false;
 		}
-	}
 
-	return messages;
+		draw({ body: text, showListenRow: true });
+		set({ isInputLocked: false });
+		return true;
+	} catch (error) {
+		console.error("Error sending turn:", error);
+		// A failure fetch itself reports, such as no network, is worth a retry.
+		const apiError = error instanceof ApiError ? error : null;
+		drawFailure(apiError?.traceId, apiError ? apiError.retryable : true, ctx.genericErrorMessage);
+		set({ isInputLocked: false });
+		return false;
+	}
 }
 
 function makeImageMessage(imageUrl: string, caption?: string): ChatMessage {
@@ -408,99 +459,38 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			apiService.setSessionId(currentSession);
 		}
 
-		try {
-			// In a real app we'd detect language, here we use what's passed
-			let streamingText = "";
-
-			const response = await apiService.sendUserQuery(
-				safeText,
-				currentSession,
-				language, // source
-				language, // target
-				(chunk) => {
-					streamingText += chunk;
-					set((state) => {
-						const lastMsg = state.messages[state.messages.length - 1];
-						if (lastMsg && lastMsg.role === "assistant" && lastMsg.type === "card") {
-							return {
-								messages: [...state.messages.slice(0, -1), { ...lastMsg, body: streamingText, showListenRow: true, responseLanguage }],
-								isAssistantTyping: false
-							};
-						} else {
-							return {
-								messages: [
-									...state.messages,
-									makeAssistantMessage(streamingText, false, true, undefined, undefined, undefined, responseLanguage)
-								],
-								isAssistantTyping: false
-							};
-						}
-					});
-				}
-				// Note: input stays locked until sendUserQuery fully resolves (after all stream chunks)
-			);
-
-			set((state) => ({
-				messages: attachQidToLatestAssistantMessage(state.messages, response.qid),
-				isAssistantTyping: false,
-				isInputLocked: false
-			}));
-
-			if (FEATURES.suggestions) {
-				const suggestions = await apiService.getSuggestions(currentSession, language);
-				set({
-					suggestions: suggestions.map((s) => ({
-						id: crypto.randomUUID(),
-						text: s.question,
-						label: s.question
-					}))
-				});
+		const answered = await streamTurn(
+			set,
+			(handlers) =>
+				apiService.sendUserQuery(
+					{
+						sessionId: currentSession,
+						messageId: userMessage.id,
+						query: safeText,
+						history: [],
+						language: { source: language, target: language }
+					},
+					handlers
+				),
+			{
+				failedUserText: safeText,
+				language,
+				responseLanguage,
+				genericErrorMessage: t
+					? String(t("chatErrorMessage"))
+					: "Sorry, there was an error processing your request. Please try again."
 			}
-		} catch (error: any) {
-			console.error("Error sending text:", error);
-			set({ isAssistantTyping: false, isInputLocked: false });
+		);
 
-			const isRateLimitError =
-				error?.status === 429 ||
-				error?.response?.status === 429 ||
-				(error instanceof Error && error.message.includes("Rate limit"));
-
-			if (isRateLimitError) {
-				const limitMessage = t
-					? t("limitMessage", { appName: APP_NAME })
-					: `Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the ${APP_NAME} app.`;
-				set((state) => ({
-					messages: (() => {
-						const backendQid = getErrorQid(error);
-						const message = makeAssistantMessage(limitMessage, true, true, backendQid, undefined, undefined, responseLanguage);
-						if (!backendQid) warnMissingBackendQid("text rate-limit error", message.id);
-						return [...state.messages, message];
-					})()
-				}));
-
-			} else {
-				// Show error as an in-chat message with retry capability
-				const errorMessage = t
-					? t("chatErrorMessage") || "Sorry, there was an error processing your request. Please try again."
-					: "Sorry, there was an error processing your request. Please try again.";
-				set((state) => ({
-					messages: (() => {
-						const backendQid = getErrorQid(error);
-						const message = makeAssistantMessage(
-							errorMessage as string,
-							true,
-							false,
-							backendQid,
-							safeText,
-							language,
-							responseLanguage
-						);
-						if (!backendQid) warnMissingBackendQid("text chat error", message.id);
-						return [...state.messages, message];
-					})()
-				}));
-
-			}
+		if (answered && FEATURES.suggestions) {
+			const suggestions = await apiService.getSuggestions(currentSession, language);
+			set({
+				suggestions: suggestions.map((s) => ({
+					id: crypto.randomUUID(),
+					text: s.question,
+					label: s.question
+				}))
+			});
 		}
 	},
 
@@ -570,97 +560,38 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			apiService.setSessionId(currentSession);
 		}
 
-		try {
-			let streamingText = "";
-
-			const response = await apiService.sendImageQuery(
-				uploadFile,
-				currentSession,
+		const answered = await streamTurn(
+			set,
+			(handlers) =>
+				apiService.sendImageQuery(
+					uploadFile,
+					{
+						sessionId: currentSession,
+						messageId: imageMessage.id,
+						history: [],
+						language: { source: language, target: language }
+					},
+					handlers
+				),
+			{
+				failedUserText: `[Image] ${uploadFile.name}`,
 				language,
-				language,
-				(chunk) => {
-					streamingText += chunk;
-					set((state) => {
-						const lastMsg = state.messages[state.messages.length - 1];
-						if (lastMsg && lastMsg.role === "assistant" && lastMsg.type === "card") {
-							return {
-								messages: [...state.messages.slice(0, -1), { ...lastMsg, body: streamingText, showListenRow: true, responseLanguage }],
-								isAssistantTyping: false
-							};
-						} else {
-							return {
-								messages: [
-									...state.messages,
-									makeAssistantMessage(streamingText, false, true, undefined, undefined, undefined, responseLanguage)
-								],
-								isAssistantTyping: false
-							};
-						}
-					});
-				}
-				// Note: input stays locked until sendImageQuery fully resolves (after all stream chunks)
-			);
-
-			set((state) => ({
-				messages: attachQidToLatestAssistantMessage(state.messages, response.qid),
-				isAssistantTyping: false,
-				isInputLocked: false
-			}));
-
-			if (FEATURES.suggestions) {
-				const suggestions = await apiService.getSuggestions(currentSession, language);
-				set({
-					suggestions: suggestions.map((s) => ({
-						id: crypto.randomUUID(),
-						text: s.question,
-						label: s.question
-					}))
-				});
+				responseLanguage,
+				genericErrorMessage: t
+					? String(t("imageUpload.analysisFailed"))
+					: "Sorry, there was an error analyzing your image. Please try again."
 			}
-		} catch (error: any) {
-			console.error("Error sending image:", error);
-			set({ isAssistantTyping: false, isInputLocked: false });
+		);
 
-			const isRateLimitError =
-				error?.status === 429 ||
-				error?.response?.status === 429 ||
-				(error instanceof Error && error.message.includes("Rate limit"));
-
-			if (isRateLimitError) {
-				const limitMessage = t
-					? t("limitMessage", { appName: APP_NAME })
-					: `Dear user, you have reached the allotted question limit for today. You may continue to explore the other features of the ${APP_NAME} app.`;
-				set((state) => ({
-					messages: (() => {
-						const backendQid = getErrorQid(error);
-						const message = makeAssistantMessage(limitMessage, true, true, backendQid, undefined, undefined, responseLanguage);
-						if (!backendQid) warnMissingBackendQid("image rate-limit error", message.id);
-						return [...state.messages, message];
-					})()
-				}));
-
-			} else {
-				const errorMessage = t
-					? t("imageUpload.analysisFailed") || "Sorry, there was an error analyzing your image. Please try again."
-					: "Sorry, there was an error analyzing your image. Please try again.";
-				set((state) => ({
-					messages: (() => {
-						const backendQid = getErrorQid(error);
-						const message = makeAssistantMessage(
-							errorMessage as string,
-							true,
-							false,
-							backendQid,
-							`[Image] ${uploadFile.name}`,
-							language,
-							responseLanguage
-						);
-						if (!backendQid) warnMissingBackendQid("image chat error", message.id);
-						return [...state.messages, message];
-					})()
-				}));
-
-			}
+		if (answered && FEATURES.suggestions) {
+			const suggestions = await apiService.getSuggestions(currentSession, language);
+			set({
+				suggestions: suggestions.map((s) => ({
+					id: crypto.randomUUID(),
+					text: s.question,
+					label: s.question
+				}))
+			});
 		}
 	},
 

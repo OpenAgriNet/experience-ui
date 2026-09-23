@@ -21,7 +21,8 @@ export type TextMessage = MessageBase & {
 
 export type CardMessage = MessageBase & {
 	type: "card";
-	qid?: string;
+	/** The API's trace id for the turn, for support. */
+	traceId?: string;
 	title?: string;
 	body: string;
 	actions?: { id: string; label: string }[];
