@@ -1,9 +1,18 @@
 #!/bin/sh
+# Husky's shim runs this with `sh -e`, but set it here too so the script is
+# correct when run directly — without it every check runs and only the last
+# one's exit status counts.
+set -e
+
+# Fast feedback only. CI runs the same checks and is the actual gate, because
+# a local hook can be skipped with --no-verify.
 
 if ! command -v bun >/dev/null 2>&1; then
-  echo "Bun not found, skipping checks"
+  echo "husky: bun not found, skipping checks"
   exit 0
 fi
 
 bun run lint
 bun run typecheck
+bun run knip
+bun run test

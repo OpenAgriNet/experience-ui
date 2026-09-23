@@ -64,6 +64,35 @@ labelled as stubbed so fabricated agricultural advice cannot be mistaken for
 real. Set `stubs.enabled` to `false` to talk to a real backend. See
 [`src/lib/api-stubs.ts`](src/lib/api-stubs.ts).
 
+## Git hooks
+
+The hooks live in `.husky/` and are activated by a single local git setting,
+`core.hooksPath`. Installing dependencies sets it, because `package.json` runs
+`husky` from its `prepare` script:
+
+```bash
+bun install
+```
+
+Check that yours are actually active:
+
+```bash
+git config core.hooksPath      # should print .husky/_
+```
+
+If that prints nothing, the hooks are not running. Fix it with `bunx husky`.
+This is worth checking rather than assuming: `core.hooksPath` is local to your
+clone and is not committed, so anyone who installed dependencies before a hook
+existed silently has no hooks.
+
+| Hook | Runs |
+|---|---|
+| `pre-commit` | lint, typecheck, knip, tests |
+| `commit-msg` | checks the subject against the convention in [`CONVENTIONS.md`](CONVENTIONS.md) |
+
+Hooks are fast feedback, not the gate — they can be skipped with
+`--no-verify`, so CI runs the same checks.
+
 ## Deployment
 
 The image is a static build served by nginx. It expects to sit behind something
@@ -126,6 +155,8 @@ happens to expire. Content-hashed assets under `/assets/` are cached for a year;
 | Doc | Contents |
 | --- | --- |
 | [`docs/ADR/`](docs/ADR/) | Accepted architecture decisions |
+| [`AGENTS.md`](AGENTS.md) | What this repo is, its stack, layout, testing patterns and gotchas |
+| [`CONVENTIONS.md`](CONVENTIONS.md) | Naming, git workflow, commit format, linting |
 
 ## License
 

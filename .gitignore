@@ -32,3 +32,11 @@ coverage/
 
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
+
+# Keys and certificates. Nothing of this shape belongs in the repository.
+*.pem
+*.key
+*.p12
+*.pfx
+oan
+oan.pub

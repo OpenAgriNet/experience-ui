@@ -1,0 +1,237 @@
+name: CI
+
+# One workflow, one job graph:
+#
+#   check ──┬──→ build ──┬──→ image   (main and tags only)
+#           └──→ security ┘
+#
+# Split across three workflows these would all start at once, and the image
+# workflow would repeat every check the first had already run. Chaining them
+# means a broken type never costs a build, and nothing is run twice.
+#
+# A pull request runs check, build and security. `bun run build` is what
+# catches a build error there; the container image is only built on main and
+# on release tags, where it is also published.
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # Fastest failure signal, so it goes first and everything else waits on it.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # --frozen-lockfile, so a dependency added without committing bun.lock
+      # fails here rather than resolving to something different in CI.
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      # Dead files and dependency drift. Unused exports are deliberately not
+      # gated — see knip.json.
+      - name: Dead code
+        run: bun run knip
+
+      # Coverage is printed here rather than uploaded anywhere. There is no
+      # threshold yet: the suite is small, and a number invented now would
+      # either be trivially met or fail on the first honest commit.
+      - name: Test
+        run: bunx vitest run --coverage
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      # The Docker build cannot regenerate this file — oven/bun:1-alpine has no
+      # Node for the TanStack Router plugin to run under — so a stale committed
+      # copy would ship a wrong route tree with nothing to catch it.
+      - name: Route tree is current
+        run: |
+          if ! git diff --quiet -- src/routeTree.gen.ts; then
+            echo "::error file=src/routeTree.gen.ts::Route tree is stale. Run 'bun run build' and commit the result."
+            git diff -- src/routeTree.gen.ts
+            exit 1
+          fi
+
+      # This client shipped an 8.66 MB SVG to every visitor for its whole life
+      # upstream. The budget is what would have caught it on the commit that
+      # added it, rather than months later.
+      - name: Bundle budget
+        run: |
+          TOTAL_KB=$(du -sk dist | cut -f1)
+          MAX_TOTAL_KB=6144
+          MAX_ASSET_KB=2048
+
+          echo "dist total: ${TOTAL_KB} KB (budget ${MAX_TOTAL_KB} KB)"
+          if [ "$TOTAL_KB" -gt "$MAX_TOTAL_KB" ]; then
+            echo "::error::dist is ${TOTAL_KB} KB, over the ${MAX_TOTAL_KB} KB budget."
+            du -ak dist | sort -rn | head -20
+            exit 1
+          fi
+
+          OVERSIZE=$(find dist -type f -size +${MAX_ASSET_KB}k)
+          if [ -n "$OVERSIZE" ]; then
+            echo "::error::These files are over the ${MAX_ASSET_KB} KB per-asset budget:"
+            echo "$OVERSIZE" | xargs -I{} du -h {}
+            exit 1
+          fi
+
+  # Scans bun.lock for known CVEs. Runs alongside build rather than after it:
+  # a vulnerable dependency and a broken bundle are independent failures and
+  # you want to see both, but neither is worth running if the code does not
+  # compile.
+  security:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy cache date
+        id: trivy-date
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy binary and vulnerability DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            bin/trivy
+            ~/.cache/trivy
+          key: trivy-${{ runner.os }}-${{ runner.arch }}-${{ steps.trivy-date.outputs.date }}
+          restore-keys: |
+            trivy-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install Trivy (if not cached)
+        run: |
+          if [ ! -x bin/trivy ]; then
+            mkdir -p bin
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b bin
+          fi
+
+      # --ignore-unfixed is what keeps this gate liveable: it only fires when an
+      # upgrade is actually available, so a red run is always actionable.
+      - name: Trivy dependency scan
+        run: |
+          ./bin/trivy fs \
+            --scanners vuln \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --no-progress \
+            .
+
+  # Only on main and release tags. A pull request has already had its build
+  # checked by the `build` job, and building an image it will never publish
+  # costs a couple of minutes on every push to every branch.
+  #
+  # Nothing is published until the code compiles, the bundle is within budget
+  # and the dependencies are clean.
+  image:
+    if: github.event_name != 'pull_request'
+    needs: [build, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy cache date
+        id: trivy-date
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy binary and vulnerability DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            bin/trivy
+            ~/.cache/trivy
+          key: trivy-${{ runner.os }}-${{ runner.arch }}-${{ steps.trivy-date.outputs.date }}
+          restore-keys: |
+            trivy-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install Trivy (if not cached)
+        run: |
+          if [ ! -x bin/trivy ]; then
+            mkdir -p bin
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b bin
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Falls back to GITHUB_TOKEN if GHCR_PAT is unset.
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Set image owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Set image tag
+        run: echo "TAG=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> "$GITHUB_ENV"
+
+      # Loaded locally first so Trivy scans the exact image that gets pushed.
+      - name: Build (local, unpushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: experience-ui:${{ env.TAG }}
+
+      # Report-only. It does not fail the build: a base-image CVE with no fix
+      # available should not block a deploy, and the dependency scan above is
+      # where an actionable finding stops things.
+      - name: Trivy image scan (report)
+        run: |
+          ./bin/trivy image \
+            --exit-code 0 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --no-progress \
+            "experience-ui:${{ env.TAG }}"
+
+      - name: Tag and push
+        run: |
+          BASE="ghcr.io/${OWNER}/experience-ui"
+          docker tag "experience-ui:${TAG}" "${BASE}:${TAG}"
+          docker tag "experience-ui:${TAG}" "${BASE}:${GITHUB_SHA}"
+          docker tag "experience-ui:${TAG}" "${BASE}:latest"
+          docker push "${BASE}:${TAG}"
+          docker push "${BASE}:${GITHUB_SHA}"
+          docker push "${BASE}:latest"
