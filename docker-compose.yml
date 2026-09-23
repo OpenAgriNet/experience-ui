@@ -4,6 +4,15 @@ services:
     image: experience-ui:latest
     ports:
       - "8080:8080"
+    environment:
+      # Where the app is mounted. Empty (the default) serves it from the origin
+      # root. Set it to the prefix without a trailing slash when it sits behind
+      # a path on a shared domain, and have the proxy strip that prefix:
+      #
+      #   BASE_PATH: /experience
+      #   location /experience/ { proxy_pass http://experience-ui:8080/; }
+      BASE_PATH: ${BASE_PATH:-}
+
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/healthz || exit 1"]

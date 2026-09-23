@@ -23,6 +23,10 @@ const routeProgress = createRouteProgress();
 
 const router = createRouter({
 	routeTree,
+	// Where the app is mounted, from the <base href> the container injects.
+	// Without this the router matches paths against the origin root and every
+	// route 404s when the app is served from a sub-path.
+	basepath: new URL(document.baseURI).pathname,
 	context: { queryClient },
 	defaultPendingComponent: () => (
 		<div className="bg-background flex h-screen w-screen items-center justify-center">

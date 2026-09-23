@@ -18,7 +18,13 @@ RUN npm run build
 FROM nginx:alpine AS serve
 
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# A template, not a config: the base image's entrypoint runs envsubst over
+# /etc/nginx/templates and writes the result into conf.d before nginx starts.
+# That is what substitutes BASE_PATH without needing a rebuild per deployment.
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+
+# Serve from the origin root unless a deployment says otherwise.
+ENV BASE_PATH=""
 
 # The configuration a deployment overrides lives in its own directory, mounted
 # over by infrastructure. Moved out of the static root so there is exactly one

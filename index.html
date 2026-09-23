@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <!-- Rewritten at container start from BASE_PATH; see nginx.conf.template.
+         Every relative URL in the app resolves against this, which is what
+         lets the same image be served from / or from /experience/. -->
+    <base href="/" />
+    <link rel="icon" type="image/svg+xml" href="brand/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <!-- Fallback only. The configured brand.documentTitle replaces this once
          /config.json resolves; see src/lib/config/branding.ts -->

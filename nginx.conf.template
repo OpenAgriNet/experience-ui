@@ -28,6 +28,22 @@ server {
     # bundles, so caching it pins the old ones.
     add_header Cache-Control $cache_control always;
 
+    # Where this app is mounted. Every URL the client builds — assets,
+    # config.json, the API — is relative and resolves against this, so the same
+    # image serves from / or from /experience/ with no rebuild.
+    #
+    # BASE_PATH is substituted by the base image's envsubst entrypoint. Empty
+    # (the default) leaves the app at the origin root. Set it to the prefix
+    # *without* a trailing slash: BASE_PATH=/experience
+    #
+    # The edge proxy is expected to strip the prefix before forwarding, so
+    # nothing below needs to know about it:
+    #
+    #   location /experience/ { proxy_pass http://experience-ui:8080/; }
+    sub_filter '<base href="/" />' '<base href="${BASE_PATH}/" />';
+    sub_filter_once on;
+    sub_filter_types text/html;
+
     add_header X-Content-Type-Options   "nosniff" always;
     add_header Referrer-Policy          "no-referrer" always;
     add_header Content-Security-Policy  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;

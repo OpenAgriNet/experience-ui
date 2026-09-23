@@ -47,6 +47,10 @@ const appConfigPlugin: PluginOption = {
 
 // https://vite.dev/config/
 export default defineConfig({
+	// Relative, so every asset URL resolves against the <base href> the
+	// container injects. Without this they are absolute from / and the app
+	// only works when it owns the origin root.
+	base: "./",
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "src"),

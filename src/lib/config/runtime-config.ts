@@ -18,7 +18,7 @@ import bundledConfig from "@/config/app-config.json";
 
 export type AppConfig = typeof bundledConfig;
 
-const CONFIG_URL = "/config.json";
+const CONFIG_URL = "config.json";
 
 let active: AppConfig = bundledConfig;
 let loaded = false;

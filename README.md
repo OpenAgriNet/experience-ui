@@ -112,6 +112,30 @@ docker run -p 8080:8080 experience-ui
 
 `GET /healthz` returns `ok` for whatever is in front.
 
+### Serving from a sub-path
+
+The client works from the origin root by default. To mount it under a path on a
+shared domain, set `BASE_PATH` and have the proxy strip the prefix:
+
+```yaml
+environment:
+  BASE_PATH: /experience
+```
+
+```nginx
+location /experience/ {
+    proxy_pass http://experience-ui:8080/;   # the trailing slash strips the prefix
+}
+```
+
+Nothing is rebuilt. The container rewrites the `<base href>` in `index.html` at
+start-up, and every URL the client builds — assets, fonts, `config.json` and the
+API — is relative, so all of them follow it.
+
+Set the prefix **without** a trailing slash, and remember that nginx resolves a
+`proxy_pass` hostname once at config load: restart the app container and the
+proxy will keep the old address until it is reloaded too.
+
 ### Configuring a deployment
 
 Everything a deployment changes — name, logo, favicon, colours, which features

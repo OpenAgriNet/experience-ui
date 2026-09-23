@@ -4,8 +4,8 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { BRAND_LOGO, LANGUAGES } from "@/components/screens-component/chat-screen/config";
 import { FEATURES } from "@/lib/config/features";
 import { LanguageSelectionDropdown } from "@/components/screens-component/chat-screen/components/language-selection-dialog";
-const settingsIcon = "/assets/settings.svg";
-const langIcon = "/assets/langIcon.svg";
+const settingsIcon = "assets/settings.svg";
+const langIcon = "assets/langIcon.svg";
 
 export type ChatHeaderProps = {
 	title: string;
