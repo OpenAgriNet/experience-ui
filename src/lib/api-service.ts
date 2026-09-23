@@ -2,23 +2,192 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { getConfig } from '@/lib/config/runtime-config';
 import {
   stubsEnabled,
+  stubChatResponse,
   stubGetSuggestions,
   stubGetTranscript,
-  stubSendUserQuery,
   stubTranscribeAudio,
   stubUploadImage,
 } from '@/lib/api-stubs';
+import { readSseEvents } from '@/lib/sse';
 
 export interface LocationData {
   latitude: number;
   longitude: number;
 }
 
-export interface ChatResponse {
-  response: string;
-  status: string;
-  qid?: string;
+// --- The chat contract: POST /v1/chat ------------------------------------
+// Shapes follow docs/implementation/experience-api-contract.md §4–§6. The
+// client branches on `content[].type` and on `error`, never on
+// `outcome.status`, so a status it has never seen still renders.
+
+export interface HistoryItem {
+  role: 'user' | 'assistant';
+  text: string;
 }
+
+/** One turn from the client. `location` is added here when the browser gave one. */
+export interface ChatTurn {
+  sessionId: string;
+  /** Id of the message in `query`. A retry sends the same one again. */
+  messageId: string;
+  query: string;
+  /** Every completed exchange so far, oldest first. The API stores nothing. */
+  history: HistoryItem[];
+  language: { source: string; target: string };
+}
+
+export type ChatTurnRequest = ChatTurn & { location?: LocationData };
+
+export interface Citation {
+  sourceId: string;
+  start: number;
+  end: number;
+}
+
+export type AnswerContent =
+  | { type: 'text'; text: string; citations?: Citation[] }
+  | { type: 'refusal'; text: string };
+
+export interface AnswerSource {
+  id: string;
+  name: string;
+  url?: string;
+}
+
+/** The one error shape: HTTP error bodies, the `error` event and `FinalAnswer.error`. */
+export interface ApiErrorBody {
+  code: string;
+  /** For logs. English. Never shown to the user as-is. */
+  message: string;
+  retryable: boolean;
+  retryAfterSeconds?: number;
+  traceId?: string;
+}
+
+/** The `completed` event, and the whole answer. Authoritative over the deltas. */
+export interface FinalAnswer {
+  sessionId: string;
+  messageId: string;
+  assistantMessageId: string;
+  traceId: string;
+  outcome: { status: string; cause: string | null };
+  /** In order. Empty only when `error` is present. */
+  content: AnswerContent[];
+  sources: AnswerSource[];
+  /** Present when the turn failed after the DSS accepted it. */
+  error?: ApiErrorBody;
+}
+
+export interface ChatStreamHandlers {
+  onStarted?: (started: { assistantMessageId: string; traceId: string }) => void;
+  onDelta?: (text: string) => void;
+}
+
+/**
+ * A failed call. `code` is what the client branches on (§6.1). It comes from
+ * the API where the API sent one, and is made up here where it did not:
+ * `history_too_large` for a bare 413, `upstream_error` for a broken stream,
+ * `unknown` for any other response without a contract body.
+ */
+export class ApiError extends Error {
+  readonly code: string;
+  readonly retryable: boolean;
+  readonly retryAfterSeconds?: number;
+  readonly traceId?: string;
+  /** HTTP status, when the failure was a response rather than a stream event. */
+  readonly status?: number;
+
+  constructor(body: ApiErrorBody, status?: number) {
+    super(body.message);
+    this.name = 'ApiError';
+    this.code = body.code;
+    this.retryable = body.retryable;
+    this.retryAfterSeconds = body.retryAfterSeconds;
+    this.traceId = body.traceId;
+    this.status = status;
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isErrorBody = (value: unknown): value is ApiErrorBody =>
+  isRecord(value) && typeof value.code === 'string' && typeof value.retryable === 'boolean';
+
+const upstreamError = (message: string, traceId?: string): ApiError =>
+  new ApiError({ code: 'upstream_error', message, retryable: true, traceId });
+
+/** Turn a non-OK response into an ApiError, with fallbacks for a body that is not ours. */
+const errorFromResponse = async (response: Response): Promise<ApiError> => {
+  const body: unknown = await response.json().catch(() => undefined);
+  if (isRecord(body) && isErrorBody(body.error)) {
+    return new ApiError(body.error, response.status);
+  }
+  if (response.status === 413) {
+    // Something in front of the API rejected the body size before the API
+    // could say so (§6.2). Same cause, same message to the user.
+    return new ApiError(
+      { code: 'history_too_large', message: `HTTP 413 without a contract body`, retryable: false },
+      413
+    );
+  }
+  return new ApiError(
+    {
+      code: 'unknown',
+      message: `HTTP ${response.status} without a contract body`,
+      retryable: response.status === 429 || response.status >= 500,
+    },
+    response.status
+  );
+};
+
+/**
+ * Read the event stream to its end. Exactly one of `completed` or `error`
+ * ends every stream (§5.1); a stream that closes without either is a failure,
+ * never a success — the connection closing proves nothing.
+ */
+const readAnswer = async (
+  body: ReadableStream<Uint8Array>,
+  handlers: ChatStreamHandlers
+): Promise<FinalAnswer> => {
+  let traceId: string | undefined;
+
+  for await (const frame of readSseEvents(body)) {
+    let data: unknown;
+    try {
+      data = JSON.parse(frame.data);
+    } catch {
+      throw upstreamError(`Event "${frame.event}" did not carry JSON`, traceId);
+    }
+    if (!isRecord(data)) throw upstreamError(`Event "${frame.event}" was not an object`, traceId);
+
+    switch (frame.event) {
+      case 'started':
+        if (typeof data.traceId === 'string') traceId = data.traceId;
+        handlers.onStarted?.({
+          assistantMessageId: String(data.assistantMessageId),
+          traceId: String(data.traceId),
+        });
+        break;
+      case 'delta':
+        if (typeof data.text === 'string') handlers.onDelta?.(data.text);
+        break;
+      case 'completed':
+        if (!Array.isArray(data.content)) throw upstreamError('completed carried no content array', traceId);
+        return data as unknown as FinalAnswer;
+      case 'error':
+        if (!isErrorBody(data.error)) throw upstreamError('error event carried no error body', traceId);
+        throw new ApiError({ traceId, ...data.error });
+      default:
+        // Forward compatible: an event this client does not know is skipped.
+        break;
+    }
+  }
+
+  throw upstreamError('The stream ended without a completed or error event', traceId);
+};
+
+// --- Older endpoints, all switched off in config ---------------------------
 
 export interface TranscriptionResponse {
   text: string;
@@ -36,23 +205,9 @@ interface TTSResponse {
   session_id: string;
 }
 
-;
-
 interface ImageUploadResponse {
   image_id: string;
 }
-
-const CHAT_QID_HEADER = "X-QID";
-const SSE_KEEPALIVE_MARKER = "SSE_KEEPALIVE";
-
-// Constants
-
-const stripSseKeepAliveMarkers = (chunk: string): string =>
-  chunk
-    .split(/\r?\n/)
-    .filter((line) => line.trim() !== SSE_KEEPALIVE_MARKER)
-    .join('\n');
-
 
 /**
  * Where the API lives: `api.baseUrl` from config.json, used as written. An
@@ -81,102 +236,44 @@ class ApiService {
     return this.axios;
   }
 
-  async sendUserQuery(
-    msg: string,
-    session: string,
-    sourceLang: string,
-    targetLang: string,
-    onStreamData?: (_data: string) => void,
-    onResponseStarted?: () => void
-  ): Promise<ChatResponse> {
-    try {
-      if (stubsEnabled()) {
-        return await stubSendUserQuery(msg, onStreamData, onResponseStarted);
-      }
+  /**
+   * Send one chat turn and stream the answer back.
+   *
+   * Resolves with the `completed` answer, which replaces whatever the deltas
+   * built up. Rejects with an ApiError for an error response, an `error`
+   * event, or a stream that broke. A `completed` that carries `error` is not
+   * a rejection: the caller reads `error` from it (§5.3).
+   *
+   * With stubs on, only the network call is swapped; the stub answers with the
+   * same event stream and everything after this line is the real code.
+   */
+  async sendUserQuery(turn: ChatTurn, handlers: ChatStreamHandlers = {}): Promise<FinalAnswer> {
+    const request: ChatTurnRequest = {
+      ...turn,
+      ...(this.locationData && { location: this.locationData }),
+    };
 
-      
-      const params = {
-        session_id: session,
-        query: msg,
-        source_lang: sourceLang,
-        target_lang: targetLang,
-        ...(this.locationData && {
-          latitude: String(this.locationData.latitude),
-          longitude: String(this.locationData.longitude)
-        })
-      };
-
-      if (onStreamData) {
-        // Handle streaming response
-        const response = await fetch(`${apiBaseUrl()}/chat/?${new URLSearchParams(params)}`, {
-          method: 'GET'
+    const response = stubsEnabled()
+      ? await stubChatResponse(request)
+      : await fetch(`${apiBaseUrl()}/v1/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+          },
+          body: JSON.stringify(request),
         });
 
-
-        if (!response.ok) {
-          const responseQid = response.headers.get(CHAT_QID_HEADER) || undefined;
-          if (response.status === 429) {
-            const error = new Error('Rate limit exceeded');
-            (error as any).status = 429;
-            if (responseQid) (error as any).qid = responseQid;
-            throw error;
-          }
-          const error = new Error(`HTTP error! status: ${response.status}`);
-          (error as any).status = response.status;
-          if (responseQid) (error as any).qid = responseQid;
-          throw error;
-        }
-
-        const responseQid = response.headers.get(CHAT_QID_HEADER) || undefined;
-        onResponseStarted?.();
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('Response body is not readable');
-        }
-
-        let fullResponse = '';
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          const displayChunk = stripSseKeepAliveMarkers(chunk);
-
-          if (chunk.includes(SSE_KEEPALIVE_MARKER) && !displayChunk.trim()) {
-            continue;
-          }
-
-          fullResponse += displayChunk;
-          onStreamData(displayChunk);
-        }
-
-        return { response: fullResponse, status: 'success', qid: responseQid };
-      } else {
-        // Regular non-streaming request
-        const config = {
-          params,
-        };
-        const response = await this.axiosInstance.get('chat/', config);
-        const responseQid = response.headers[CHAT_QID_HEADER.toLowerCase()] as string | undefined;
-        onResponseStarted?.();
-        return {
-          ...response.data,
-          qid: response.data?.qid || responseQid
-        };
-      }
-    } catch (error) {
-      const responseQid = axios.isAxiosError(error)
-        ? error.response?.headers?.[CHAT_QID_HEADER.toLowerCase()]
-        : undefined;
-      if (responseQid) {
-        (error as any).qid = responseQid;
-      }
-      console.error('Error sending user query:', error);
-      throw error;
+    if (!response.ok) {
+      throw await errorFromResponse(response);
     }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('text/event-stream') || !response.body) {
+      throw upstreamError(`Expected an event stream, got "${contentType || 'no content type'}"`);
+    }
+
+    return readAnswer(response.body, handlers);
   }
 
   private parseImageUploadResponse(payload: unknown): ImageUploadResponse {
@@ -221,12 +318,9 @@ class ApiService {
 
   async sendImageQuery(
     imageFile: File,
-    session: string,
-    sourceLang: string,
-    targetLang: string,
-    onStreamData?: (_data: string) => void,
-    onResponseStarted?: () => void
-  ): Promise<ChatResponse> {
+    turn: Omit<ChatTurn, 'query'>,
+    handlers: ChatStreamHandlers = {}
+  ): Promise<FinalAnswer> {
     // Step 1: Upload image to get image ID
     const uploadResult = await this.uploadImage(imageFile);
     const imageId = uploadResult.image_id;
@@ -235,7 +329,7 @@ class ApiService {
     // The backend resolves this ID to a localhost image URL internally.
     const query = `please do the pest analysis for this image ${imageId}`;
 
-    return this.sendUserQuery(query, session, sourceLang, targetLang, onStreamData, onResponseStarted);
+    return this.sendUserQuery({ ...turn, query }, handlers);
   }
 
   async getSuggestions(session: string, targetLang: string = 'mr'): Promise<SuggestionItem[]> {

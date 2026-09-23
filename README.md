@@ -59,11 +59,15 @@ is `api.baseUrl` in `config.json`, an absolute path on the app's own origin.
 The default, `/experience/api`, is the reference deployment's path (see
 *Serving from a sub-path*).
 
-There is no Experience API yet, so the client ships with a stub layer turned on
-(`stubs.enabled` in `config.json`). With it on, every endpoint returns canned
-data, nothing leaves the browser, and the chat works end to end — each reply is
-labelled as stubbed so fabricated agricultural advice cannot be mistaken for
-real. Set `stubs.enabled` to `false` to talk to a real backend. See
+The dev server proxies `api.baseUrl` to an Experience API on
+`http://localhost:8078`; set `DEV_API_URL` for another address. Without one,
+every question shows an error card.
+
+To work with no API at all, set `stubs.enabled` to `true` in
+`src/config/app-config.json`. Every endpoint then returns canned data, nothing
+leaves the browser, and the chat works end to end — each reply is labelled as
+stubbed so fabricated agricultural advice cannot be mistaken for real. The
+shipped file is the deployed one, so do not commit the change. See
 [`src/lib/api-stubs.ts`](src/lib/api-stubs.ts).
 
 ## Git hooks

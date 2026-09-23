@@ -1,13 +1,14 @@
 /**
- * Local stub layer — returns canned objects instead of hitting the backend.
+ * Local stub layer — answers with canned data instead of calling the backend.
  *
  * Controlled by the `stubs` block in config.json. When disabled, every export
- * here is inert and the app talks to the real API exactly as before.
+ * here is inert and the app talks to the real API.
  *
- * This exists so the UI can be run with no backend — there is no Experience API
- * yet. It is a stepping stone to a real mock REST service: each
- * function below mirrors one endpoint's response shape, so the bodies can be
- * lifted into an actual server later.
+ * This exists so the UI can be run with no backend. For chat, the stub does
+ * not short-circuit the client: it returns a Response carrying the same
+ * event stream the Experience API sends (contract §5.1), so the real parser
+ * and event handling run on every stubbed reply. The older endpoints below
+ * return plain objects, because the surfaces that call them are switched off.
  *
  * Every stubbed chat reply ends with a line saying so, because these are
  * plausible-looking agricultural answers and must never be mistaken for real
@@ -16,7 +17,9 @@
 
 import { getConfig } from '@/lib/config/runtime-config';
 import type {
-  ChatResponse,
+  ApiErrorBody,
+  ChatTurnRequest,
+  FinalAnswer,
   SuggestionItem,
   TranscriptionResponse,
 } from '@/lib/api-service';
@@ -49,10 +52,27 @@ const stubLog = (endpoint: string, detail?: unknown): void => {
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// --- Endpoint stubs ----------------------------------------------------
+// --- POST /v1/chat -------------------------------------------------------
 
-const CHAT_REPLIES: string[] = [
-  `### Wheat sowing advice
+const STUB_NOTE = '_This is a stubbed response — no backend was contacted._';
+
+type StubReply = Pick<FinalAnswer, 'outcome' | 'content' | 'sources'> & {
+  error?: Omit<ApiErrorBody, 'traceId'>;
+};
+
+/**
+ * One reply per kind of outcome the client has to draw (§5.3), in a cycle:
+ * three answers, a refusal, and a turn that failed after the DSS accepted it.
+ * The last one shows Retry and stays out of history, so both can be checked
+ * with stubs on.
+ */
+const CHAT_REPLIES: StubReply[] = [
+  {
+    outcome: { status: 'answered', cause: null },
+    content: [
+      {
+        type: 'text',
+        text: `### Wheat sowing advice
 
 For **Pune district**, the recommended sowing window for irrigated wheat is **1–15 November**.
 
@@ -63,9 +83,18 @@ For **Pune district**, the recommended sowing window for irrigated wheat is **1�
 2. Give the first irrigation 20–25 days after sowing (crown root stage) — this one matters most for yield.
 3. Watch for yellow rust from late December onward.
 
-_This is a stubbed response — no backend was contacted._`,
-
-  `### Mandi prices
+${STUB_NOTE}`,
+        citations: [{ sourceId: 'src_1', start: 0, end: 24 }],
+      },
+    ],
+    sources: [{ id: 'src_1', name: 'Package of Practices, MPKV Rahuri', url: 'https://mpkv.ac.in/' }],
+  },
+  {
+    outcome: { status: 'answered', cause: null },
+    content: [
+      {
+        type: 'text',
+        text: `### Mandi prices
 
 Indicative rates for your area today:
 
@@ -77,9 +106,18 @@ Indicative rates for your area today:
 
 Prices are per quintal and vary by grade and moisture content.
 
-_This is a stubbed response — no backend was contacted._`,
-
-  `### PM-Kisan Samman Nidhi
+${STUB_NOTE}`,
+        citations: [],
+      },
+    ],
+    sources: [],
+  },
+  {
+    outcome: { status: 'answered', cause: null },
+    content: [
+      {
+        type: 'text',
+        text: `### PM-Kisan Samman Nidhi
 
 Eligible landholding farmer families receive **₹6,000 per year**, paid in three equal instalments of ₹2,000.
 
@@ -90,45 +128,118 @@ Eligible landholding farmer families receive **₹6,000 per year**, paid in thre
 
 If an instalment is pending, the usual cause is incomplete e-KYC or a name mismatch with bank records.
 
-_This is a stubbed response — no backend was contacted._`,
+${STUB_NOTE}`,
+        citations: [],
+      },
+    ],
+    sources: [],
+  },
+  {
+    outcome: { status: 'rejected', cause: 'out_of_scope' },
+    content: [
+      {
+        type: 'refusal',
+        text: `I can help with farming questions — crops, livestock, weather, market prices and government schemes — but not with this one.
+
+${STUB_NOTE}`,
+      },
+    ],
+    sources: [],
+  },
+  {
+    outcome: { status: 'unavailable', cause: 'provider_unavailable' },
+    content: [
+      {
+        type: 'text',
+        text: `The market price service is not responding right now. Please try again in a few minutes.
+
+${STUB_NOTE}`,
+        citations: [],
+      },
+    ],
+    sources: [],
+    error: {
+      code: 'provider_unavailable',
+      message: 'Upstream price provider timed out after 30s',
+      retryable: true,
+      retryAfterSeconds: 30,
+    },
+  },
 ];
 
 let chatReplyIndex = 0;
 
-/**
- * GET /api/chat/
- *
- * Emulates the streaming endpoint: the reply is pushed through `onStreamData`
- * in small chunks, the same way the real SSE response is consumed.
- */
-export const stubSendUserQuery = async (
-  query: string,
-  onStreamData?: (_data: string) => void,
-  onResponseStarted?: () => void
-): Promise<ChatResponse> => {
-  stubLog('GET /api/chat/', { query });
-  const qid = `stub-qid-${Date.now()}`;
+const frame = (event: string, data: unknown): string =>
+  `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 
-  const reply = CHAT_REPLIES[chatReplyIndex % CHAT_REPLIES.length] as string;
+/**
+ * The frames one stubbed turn streams, as the API would write them (§5.1):
+ * `started`, a comment line as a keep-alive would be, a `delta` per word of
+ * each text item, then `completed` with the whole answer. Pure, so the
+ * stream's content can be tested without its timing.
+ */
+export const stubChatFrames = (request: ChatTurnRequest): string[] => {
+  const reply = CHAT_REPLIES[chatReplyIndex % CHAT_REPLIES.length] as StubReply;
   chatReplyIndex += 1;
 
-  await delay(400);
-  onResponseStarted?.();
+  const ids = {
+    sessionId: request.sessionId,
+    messageId: request.messageId,
+    assistantMessageId: crypto.randomUUID(),
+    traceId: crypto.randomUUID(),
+  };
+  let sequence = 0;
+  const next = () => ++sequence;
 
-  if (!onStreamData) {
-    await delay(300);
-    return { response: reply, status: 'success', qid };
+  const frames = [frame('started', { sequence: next(), ...ids }), ': ping\n\n'];
+
+  for (const item of reply.content) {
+    if (item.type !== 'text') continue; // a refusal arrives whole, in completed
+    for (const word of item.text.match(/\S+\s*/g) ?? []) {
+      frames.push(frame('delta', { sequence: next(), text: word }));
+    }
   }
 
-  // Stream in word-sized chunks so the typing indicator behaves realistically.
-  const chunks = reply.match(/\S+\s*/g) ?? [reply];
-  for (const chunk of chunks) {
-    await delay(18);
-    onStreamData(chunk);
-  }
+  const answer: FinalAnswer = {
+    ...ids,
+    outcome: reply.outcome,
+    content: reply.content,
+    sources: reply.sources,
+    ...(reply.error && { error: { ...reply.error, traceId: ids.traceId } }),
+  };
+  frames.push(frame('completed', { sequence: next(), ...answer }));
 
-  return { response: reply, status: 'success', qid };
+  return frames;
 };
+
+/**
+ * What fetch would return for POST /v1/chat: a 200 whose body streams the
+ * frames above, a word at a time, so the typing indicator and the streaming
+ * text behave as they would against the real API.
+ */
+export const stubChatResponse = async (request: ChatTurnRequest): Promise<Response> => {
+  stubLog('POST /v1/chat', request);
+  const frames = stubChatFrames(request);
+  const encoder = new TextEncoder();
+
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      await delay(400);
+      for (const chunk of frames) {
+        controller.enqueue(encoder.encode(chunk));
+        await delay(18);
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(body, {
+    status: 200,
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+};
+
+// --- Older endpoints, switched off ------------------------------------------
 
 /** POST /api/image/upload */
 export const stubUploadImage = async (file: File): Promise<{ image_id: string }> => {

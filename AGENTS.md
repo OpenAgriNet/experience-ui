@@ -48,9 +48,12 @@ npm run build            # tsc -b && vite build
 docker compose up --build   # the deployable image, http://localhost:8080
 ```
 
-There is no Experience API yet. The client ships with stubs on
-(`stubs.enabled` in config), so chat works end to end with canned replies, each
-labelled as stubbed.
+The client ships with stubs **off** and calls the Experience API at
+`api.baseUrl`. In `npm run dev` that path is proxied to a local API
+(`DEV_API_URL`, default `http://localhost:8078`). With no API running, set
+`stubs.enabled` to `true` in `src/config/app-config.json` for canned replies,
+each labelled as stubbed, and do not commit it: the shipped file is the
+deployed one.
 
 ## Conventions
 Naming, git workflow, commit format, PR shape and linting are in

@@ -1,6 +1,6 @@
 {
   "stubs": {
-    "enabled": true
+    "enabled": false
   },
   "api": {
     "baseUrl": "/experience/api"
