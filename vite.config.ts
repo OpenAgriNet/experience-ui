@@ -25,6 +25,7 @@ const virtualRouteFileChangeReloadPlugin: PluginOption = {
  * plugin puts it on the web root in both dev and build from that one source.
  */
 const APP_CONFIG_SOURCE = path.resolve(__dirname, "src/config/app-config.json");
+const apiBaseUrl: string = JSON.parse(fs.readFileSync(APP_CONFIG_SOURCE, "utf-8")).api.baseUrl;
 
 const appConfigPlugin: PluginOption = {
 	name: "serve-app-config",
@@ -72,6 +73,17 @@ export default defineConfig({
 		virtualRouteFileChangeReloadPlugin
 	],
 	server: {
-		port: 3000
+		port: 3000,
+		// With stubs off, calls to api.baseUrl go to a local Experience API the
+		// way the front proxy routes them in deployment: same origin for the
+		// browser, the prefix stripped before it reaches the API. The path is
+		// read from the same config file the app uses, so the two cannot drift.
+		// The API's own port is the default; DEV_API_URL overrides it.
+		proxy: {
+			[apiBaseUrl]: {
+				target: process.env.DEV_API_URL || "http://localhost:8078",
+				rewrite: (requestPath) => requestPath.slice(apiBaseUrl.length)
+			}
+		}
 	}
 });
