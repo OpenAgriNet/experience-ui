@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { environment } from '@/lib/config/environment';
+import { getConfig } from '@/lib/config/runtime-config';
 import {
   stubsEnabled,
   stubGetSuggestions,
@@ -55,29 +55,32 @@ const stripSseKeepAliveMarkers = (chunk: string): string =>
 
 
 /**
- * Where the API lives. `environment.apiUrl` is empty, so it is same-origin;
- * BASE_URL carries the sub-path the app was built for, if any.
+ * Where the API lives: `api.baseUrl` from config.json, used as written. An
+ * absolute path such as `/api` or `/exp/api` keeps every call on the app's
+ * own origin. A full URL works too, but needs CORS on the API and the CSP's
+ * connect-src widened.
+ *
+ * Read on each call rather than at import. Configuration exists only once
+ * loadRuntimeConfig() has resolved, and this module is imported by tests.
  */
-const apiBase = `${import.meta.env.BASE_URL}api/`;
+const apiBaseUrl = (): string => getConfig().api.baseUrl;
 
 class ApiService {
-  private apiUrl: string = environment.apiUrl;
   private locationData: LocationData | null = null;
   private currentSessionId: string | null = null;
-  private axiosInstance: AxiosInstance;
+  private axios: AxiosInstance | null = null;
 
-  constructor() {
-    this.axiosInstance = axios.create({
-      baseURL: this.apiUrl || apiBase,
+  /** Built on first use, for the same reason apiBaseUrl() is a function. */
+  private get axiosInstance(): AxiosInstance {
+    this.axios ??= axios.create({
+      baseURL: `${apiBaseUrl()}/`,
       headers: {
         'Content-Type': 'application/json'
       }
     });
-
+    return this.axios;
   }
 
-  
-  
   async sendUserQuery(
     msg: string,
     session: string,
@@ -105,7 +108,7 @@ class ApiService {
 
       if (onStreamData) {
         // Handle streaming response
-        const response = await fetch(`${this.apiUrl || apiBase}chat/?${new URLSearchParams(params)}`, {
+        const response = await fetch(`${apiBaseUrl()}/chat/?${new URLSearchParams(params)}`, {
           method: 'GET'
         });
 
@@ -199,7 +202,7 @@ class ApiService {
       const formData = new FormData();
       formData.append('image', imageFile);
 
-      const response = await fetch(`${this.apiUrl || apiBase}image/upload`, {
+      const response = await fetch(`${apiBaseUrl()}/image/upload`, {
         method: 'POST',
         body: formData
       });

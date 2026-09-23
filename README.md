@@ -54,8 +54,10 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-No environment variables are required to boot. The app calls `/api/*` on its
-own origin.
+No environment variables are required to boot. Where the app sends API calls
+is `api.baseUrl` in `config.json`, an absolute path on the app's own origin.
+The default, `/experience/api`, is the reference deployment's path (see
+*Serving from a sub-path*).
 
 There is no Experience API yet, so the client ships with a stub layer turned on
 (`stubs.enabled` in `config.json`). With it on, every endpoint returns canned
@@ -130,6 +132,24 @@ location = /experience {
     return 301 /experience/;                 # otherwise a bare /experience 404s
 }
 ```
+
+The Experience API sits behind the same proxy, one level down. `api.baseUrl`
+in `config.json` defaults to `/experience/api` to match this layout, so
+nothing is mounted over the shipped config. The proxy routes that path to the
+API and strips the prefix:
+
+```nginx
+location /experience/api/ {
+    proxy_pass http://experience-api:8000/;   # your API's address; the slash strips the prefix
+    proxy_buffering off;                      # or the answer arrives all at once
+    proxy_read_timeout 120s;                  # the whole-turn timeout; nginx's default is 60s
+    client_max_body_size 2m;                  # above the DSS's 1 MB, so the DSS decides "too long"
+}
+```
+
+A deployment at another path changes `api.baseUrl` to match. Nothing derives
+it from `VITE_BASE_PATH`: the two can differ, and an API call that quietly
+went to the wrong place would be hard to trace.
 
 Leading and trailing slashes on `VITE_BASE_PATH` both matter. The path is baked
 into the bundle, so **an image built for a sub-path serves only from that

@@ -200,4 +200,6 @@ Not debt. Recorded so they are not "cleaned up" by someone who assumes otherwise
 - **`react-markdown` + `remark-gfm`** for answer rendering, with links forced to
   `target="_blank" rel="noopener noreferrer"`. Means the Experience API can
   append provenance as markdown and have it render safely today.
-- **Same-origin `/api/*`** — no CORS, no preflight, by construction.
+- **Same-origin API** — `api.baseUrl` in `config.json` is an absolute path
+  on the app's own origin by default, so no CORS and no preflight. Another
+  origin is possible, but needs CORS on the API and a wider CSP.
