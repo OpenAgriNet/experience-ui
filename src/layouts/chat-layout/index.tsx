@@ -8,6 +8,7 @@ import { useCallback, useState, useEffect } from "react";
 import { Toast } from "@/components/screens-component/chat-screen/components/toast";
 import { SettingsDrawer } from "@/components/screens-component/chat-screen/components/settings-drawer";
 import apiService from "@/lib/api-service";
+import { FEATURES } from "@/lib/config/features";
 
 const ONE_DAY = 24 * 60 * 60 * 1000;
 
@@ -49,6 +50,10 @@ function ChatLayout() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 
 	useEffect(() => {
+		// Nothing consumes the coordinates yet, so asking for them costs the
+		// user a decision and buys nothing.
+		if (!FEATURES.geolocation) return;
+
 		const cachedLocation = getCachedLocation();
 		if (cachedLocation) {
 			apiService.setLocationData({
@@ -142,7 +147,7 @@ function ChatLayout() {
 					isTranscribing={isTranscribing}
 					suggestions={suggestions}
 					onSuggestionClick={(text: string) => sendText(text, language, t)}
-					micHint={messages.length > 0 ? undefined : (t("chatMicHint") as string)}
+					micHint={FEATURES.voiceInput && messages.length === 0 ? (t("chatMicHint") as string) : undefined}
 					footerNote={t("disclaimerText") as string}
 				/>
 			</div>

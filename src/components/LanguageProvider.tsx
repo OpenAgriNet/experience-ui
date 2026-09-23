@@ -10,6 +10,7 @@ import kn from '../../translations/kn.json';
 import ml from '../../translations/ml.json';
 import as_ from '../../translations/as.json';
 import { DEFAULT_LANGUAGE } from './screens-component/chat-screen/config';
+import { FEATURES } from '@/lib/config/features';
 
 type LanguageCode = 'hi' | 'en' | 'bn' | 'te' | 'mr' | 'ta' | 'gu' | 'kn' | 'ml' | 'as';
 
@@ -25,15 +26,28 @@ interface TranslationObject {
 
 const translations: Record<LanguageCode, TranslationObject> = { hi, en, bn, te, mr, ta, gu, kn, ml, as: as_ };
 
+/**
+ * Which language the app opens in.
+ *
+ * With the picker off there is no way back out of another language, and a
+ * visitor who chose one on an earlier build still has it in storage. Pinning
+ * has to ignore both that and the configured default, or they are stranded.
+ */
+export const resolveInitialLanguage = (): LanguageCode => {
+  if (!FEATURES.languageSelector) return 'en';
+
+  const saved = localStorage.getItem('app_language');
+  return (saved as LanguageCode) || DEFAULT_LANGUAGE;
+};
+
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<LanguageCode>(() => {
-    const saved = localStorage.getItem('app_language');
-    return (saved as LanguageCode) || DEFAULT_LANGUAGE;
-  });
+  const [language, setLanguageState] = useState<LanguageCode>(resolveInitialLanguage);
 
   const setLanguage = (lang: LanguageCode) => {
+    if (!FEATURES.languageSelector) return;
+
     setLanguageState(lang);
     localStorage.setItem('app_language', lang);
   };
