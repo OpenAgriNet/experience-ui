@@ -217,8 +217,11 @@ interface ImageUploadResponse {
  *
  * Read on each call rather than at import. Configuration exists only once
  * loadRuntimeConfig() has resolved, and this module is imported by tests.
+ *
+ * A trailing slash is dropped: every path is appended as `/v1/chat`, and
+ * `/api//v1/chat` is a different, unknown route to the API.
  */
-const apiBaseUrl = (): string => getConfig().api.baseUrl;
+const apiBaseUrl = (): string => getConfig().api.baseUrl.replace(/\/+$/, '');
 
 class ApiService {
   private locationData: LocationData | null = null;
