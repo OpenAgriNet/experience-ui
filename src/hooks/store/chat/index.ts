@@ -48,7 +48,8 @@ type ChatStore = {
 	isFetchingSuggestions: boolean;
 	sessionId: string | null;
 	initializeSession: (user: any) => Promise<void>;
-	sendText: (text: string, language: string, t?: any) => Promise<void>;
+	/** `messageId` is set only by Retry, so the API sees one id for one question (contract §3). */
+	sendText: (text: string, language: string, t?: any, messageId?: string) => Promise<void>;
 	sendAudio: (blob: Blob, sessionId: string, language: string) => Promise<void>;
 	sendImage: (imageFile: File, language: string, t?: any) => Promise<void>;
 	sendQuickAction: (id: string, language: string, t?: any) => void;
@@ -184,9 +185,9 @@ async function normalizeImageForUpload(file: File): Promise<File> {
 	});
 }
 
-function makeUserMessage(text: string): TextMessage {
+function makeUserMessage(text: string, id: string = crypto.randomUUID()): TextMessage {
 	return {
-		id: crypto.randomUUID(),
+		id,
 		role: "user",
 		type: "text",
 		text,
@@ -458,7 +459,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 		}));
 	},
 
-	sendText: async (text, language, t) => {
+	sendText: async (text, language, t, messageId) => {
 		const trimmed = text.trim();
 		if (!trimmed) return;
 		const safeText = neutralizeHtmlMarkup(trimmed);
@@ -467,7 +468,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 		get().stopTTS();
 		await get().fetchLocation(t);
 
-		const userMessage = makeUserMessage(safeText);
+		const userMessage = makeUserMessage(safeText, messageId);
 		set((state) => ({
 			messages: [...state.messages, userMessage],
 			draft: "",
@@ -719,12 +720,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			messages: state.messages.filter((_, i) => i !== lastErrorIdx)
 		}));
 
-		// Also remove the corresponding user message (the one right before the error)
+		// Also remove the corresponding user message (the one right before the
+		// error), keeping its id: the retry is the same message, sent again.
+		let retriedId: string | undefined;
 		set((state) => {
 			const msgs = [...state.messages];
-			// Find the last user message before where the error was
 			for (let i = msgs.length - 1; i >= 0; i--) {
-				if (msgs[i]!.role === "user" && msgs[i]!.type === "text" && (msgs[i] as any).text === textToRetry) {
+				const candidate = msgs[i]!;
+				if (candidate.role === "user" && candidate.type === "text" && candidate.text === textToRetry) {
+					retriedId = candidate.id;
 					msgs.splice(i, 1);
 					break;
 				}
@@ -732,8 +736,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			return { messages: msgs };
 		});
 
-		// Re-send the message
-		get().sendText(textToRetry, langToUse, t);
+		get().sendText(textToRetry, langToUse, t, retriedId);
 	},
 
 	generateQuickActions: (t) => {
