@@ -12,6 +12,7 @@ import apiService, { ApiError, type ChatStreamHandlers, type FinalAnswer } from 
 import { shuffle, randomPick } from "@/lib/qa-utils";
 import type { ToastType } from "@/components/screens-component/chat-screen/components/toast";
 import { neutralizeHtmlMarkup } from "@/lib/security/html";
+import { buildHistory } from "./history";
 
 
 
@@ -490,7 +491,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 						sessionId: currentSession,
 						messageId: userMessage.id,
 						query: safeText,
-						history: [],
+						history: buildHistory(get().messages),
 						language: { source: language, target: language }
 					},
 					handlers
@@ -582,7 +583,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 					{
 						sessionId: currentSession,
 						messageId: imageMessage.id,
-						history: [],
+						history: buildHistory(get().messages),
 						language: { source: language, target: language }
 					},
 					handlers
