@@ -108,6 +108,16 @@ describe("sendUserQuery", () => {
 		expect(answer.error).toMatchObject({ code: "provider_unavailable", retryable: true });
 	});
 
+	it("fails as upstream_error when started has no ids, rather than passing 'undefined' on", async () => {
+		fetchOnce(streamResponse('event: started\ndata: {"sequence":1,"sessionId":"s","messageId":"m"}\n\n' + COMPLETED));
+		const onStarted = vi.fn();
+
+		const error = await failure(apiService.sendUserQuery(turn, { onStarted }));
+
+		expect(error).toMatchObject({ code: "upstream_error", retryable: true });
+		expect(onStarted).not.toHaveBeenCalled();
+	});
+
 	it("skips events it does not know", async () => {
 		fetchOnce(streamResponse(STARTED + 'event: heartbeat\ndata: {"sequence":2}\n\n' + COMPLETED));
 

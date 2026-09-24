@@ -163,11 +163,11 @@ const readAnswer = async (
 
     switch (frame.event) {
       case 'started':
-        if (typeof data.traceId === 'string') traceId = data.traceId;
-        handlers.onStarted?.({
-          assistantMessageId: String(data.assistantMessageId),
-          traceId: String(data.traceId),
-        });
+        if (typeof data.assistantMessageId !== 'string' || typeof data.traceId !== 'string') {
+          throw upstreamError('started carried no assistantMessageId or traceId');
+        }
+        traceId = data.traceId;
+        handlers.onStarted?.({ assistantMessageId: data.assistantMessageId, traceId: data.traceId });
         break;
       case 'delta':
         if (typeof data.text === 'string') handlers.onDelta?.(data.text);
