@@ -439,7 +439,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 	},
 	stopListening: () => set(() => ({ isListening: false })),
 
-	clearChat: () =>
+	clearChat: () => {
+		// A cleared chat is a new conversation to the DSS as well. The session id
+		// lives exactly as long as the history does (contract §3).
+		const sid = crypto.randomUUID();
+		apiService.setSessionId(sid);
 		set(() => ({
 			messages: [],
 			draft: "",
@@ -448,8 +452,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			isInputLocked: false,
 			isListening: false,
 			isTranscribing: false,
-			isFetchingSuggestions: false
-		})),
+			isFetchingSuggestions: false,
+			sessionId: sid
+		}));
+	},
 
 	sendText: async (text, language, t) => {
 		const trimmed = text.trim();
