@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/config/runtime-config", () => ({
-	getConfig: () => ({ api: { baseUrl: "/api" }, stubs: { enabled: false } })
-}));
+const mockConfig = vi.hoisted(() => ({ api: { baseUrl: "/api" }, stubs: { enabled: false } }));
+vi.mock("@/lib/config/runtime-config", () => ({ getConfig: () => mockConfig }));
 
 import apiService, { ApiError, type ChatTurn } from "@/lib/api-service";
 
@@ -79,6 +78,18 @@ describe("sendUserQuery", () => {
 		expect(JSON.parse(second.body as string).location).toEqual({ latitude: 20.0059, longitude: 73.7898 });
 	});
 
+	it("tolerates a trailing slash on api.baseUrl", async () => {
+		mockConfig.api.baseUrl = "/experience/api/";
+		try {
+			const fetchMock = fetchOnce(streamResponse(STARTED + COMPLETED));
+			await apiService.sendUserQuery(turn);
+
+			expect(fetchMock.mock.calls[0]?.[0]).toBe("/experience/api/v1/chat");
+		} finally {
+			mockConfig.api.baseUrl = "/api";
+		}
+	});
+
 	it("reports started and each delta, then resolves with the completed answer", async () => {
 		fetchOnce(streamResponse(STARTED + DELTAS + COMPLETED));
 		const onStarted = vi.fn();
@@ -106,6 +117,26 @@ describe("sendUserQuery", () => {
 		const answer = await apiService.sendUserQuery(turn);
 
 		expect(answer.error).toMatchObject({ code: "provider_unavailable", retryable: true });
+	});
+
+	it("fails as upstream_error when started has no ids, rather than passing 'undefined' on", async () => {
+		fetchOnce(streamResponse('event: started\ndata: {"sequence":1,"sessionId":"s","messageId":"m"}\n\n' + COMPLETED));
+		const onStarted = vi.fn();
+
+		const error = await failure(apiService.sendUserQuery(turn, { onStarted }));
+
+		expect(error).toMatchObject({ code: "upstream_error", retryable: true });
+		expect(onStarted).not.toHaveBeenCalled();
+	});
+
+	it("fails as upstream_error when completed is malformed", async () => {
+		const stringError = COMPLETED.replace('"sources":[]', '"sources":[],"error":"provider down"');
+		fetchOnce(streamResponse(STARTED + stringError));
+		expect(await failure(apiService.sendUserQuery(turn))).toMatchObject({ code: "upstream_error" });
+
+		const nothingToShow = COMPLETED.replace(/"content":\[.*?\],"sources"/, '"content":[],"sources"');
+		fetchOnce(streamResponse(STARTED + nothingToShow));
+		expect(await failure(apiService.sendUserQuery(turn))).toMatchObject({ code: "upstream_error" });
 	});
 
 	it("skips events it does not know", async () => {

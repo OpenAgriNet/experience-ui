@@ -25,7 +25,8 @@ const virtualRouteFileChangeReloadPlugin: PluginOption = {
  * plugin puts it on the web root in both dev and build from that one source.
  */
 const APP_CONFIG_SOURCE = path.resolve(__dirname, "src/config/app-config.json");
-const apiBaseUrl: string = JSON.parse(fs.readFileSync(APP_CONFIG_SOURCE, "utf-8")).api.baseUrl;
+// Without its trailing slash, if any, as the client reads it.
+const apiBaseUrl: string = JSON.parse(fs.readFileSync(APP_CONFIG_SOURCE, "utf-8")).api.baseUrl.replace(/\/+$/, "");
 
 const appConfigPlugin: PluginOption = {
 	name: "serve-app-config",

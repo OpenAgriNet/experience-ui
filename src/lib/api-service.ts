@@ -163,17 +163,25 @@ const readAnswer = async (
 
     switch (frame.event) {
       case 'started':
-        if (typeof data.traceId === 'string') traceId = data.traceId;
-        handlers.onStarted?.({
-          assistantMessageId: String(data.assistantMessageId),
-          traceId: String(data.traceId),
-        });
+        if (typeof data.assistantMessageId !== 'string' || typeof data.traceId !== 'string') {
+          throw upstreamError('started carried no assistantMessageId or traceId');
+        }
+        traceId = data.traceId;
+        handlers.onStarted?.({ assistantMessageId: data.assistantMessageId, traceId: data.traceId });
         break;
       case 'delta':
         if (typeof data.text === 'string') handlers.onDelta?.(data.text);
         break;
       case 'completed':
+        // Held to §5.2 before the store acts on it: content is a list, error
+        // when present has our shape, and empty content only comes with error.
         if (!Array.isArray(data.content)) throw upstreamError('completed carried no content array', traceId);
+        if (data.error !== undefined && !isErrorBody(data.error)) {
+          throw upstreamError('completed carried an error without the contract shape', traceId);
+        }
+        if (data.content.length === 0 && data.error === undefined) {
+          throw upstreamError('completed carried neither content nor error', traceId);
+        }
         return data as unknown as FinalAnswer;
       case 'error':
         if (!isErrorBody(data.error)) throw upstreamError('error event carried no error body', traceId);
@@ -217,8 +225,11 @@ interface ImageUploadResponse {
  *
  * Read on each call rather than at import. Configuration exists only once
  * loadRuntimeConfig() has resolved, and this module is imported by tests.
+ *
+ * A trailing slash is dropped: every path is appended as `/v1/chat`, and
+ * `/api//v1/chat` is a different, unknown route to the API.
  */
-const apiBaseUrl = (): string => getConfig().api.baseUrl;
+const apiBaseUrl = (): string => getConfig().api.baseUrl.replace(/\/+$/, '');
 
 class ApiService {
   private locationData: LocationData | null = null;
