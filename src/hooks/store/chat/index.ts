@@ -298,6 +298,23 @@ async function streamTurn(
 	}
 }
 
+/** After an answered turn, fetch follow-up suggestions, when that surface is on. */
+async function refreshSuggestions(
+	set: StoreApi<ChatStore>["setState"],
+	sessionId: string,
+	language: string
+): Promise<void> {
+	if (!FEATURES.suggestions) return;
+	const suggestions = await apiService.getSuggestions(sessionId, language);
+	set({
+		suggestions: suggestions.map((s) => ({
+			id: crypto.randomUUID(),
+			text: s.question,
+			label: s.question
+		}))
+	});
+}
+
 function makeImageMessage(imageUrl: string, caption?: string): ChatMessage {
 	return {
 		id: crypto.randomUUID(),
@@ -482,16 +499,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			}
 		);
 
-		if (answered && FEATURES.suggestions) {
-			const suggestions = await apiService.getSuggestions(currentSession, language);
-			set({
-				suggestions: suggestions.map((s) => ({
-					id: crypto.randomUUID(),
-					text: s.question,
-					label: s.question
-				}))
-			});
-		}
+		if (answered) await refreshSuggestions(set, currentSession, language);
 	},
 
 	sendImage: async (imageFile, language, t) => {
@@ -583,16 +591,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			}
 		);
 
-		if (answered && FEATURES.suggestions) {
-			const suggestions = await apiService.getSuggestions(currentSession, language);
-			set({
-				suggestions: suggestions.map((s) => ({
-					id: crypto.randomUUID(),
-					text: s.question,
-					label: s.question
-				}))
-			});
-		}
+		if (answered) await refreshSuggestions(set, currentSession, language);
 	},
 
 	sendAudio: async (blob, sessionId, language) => {
