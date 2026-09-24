@@ -89,6 +89,8 @@ work" are different claims and a reviewer cannot tell them apart afterwards.
   then `image` — so a broken type never costs a build and no check runs twice.
   A pull request stops after `build`: `npm run build` is what catches a build
   error there, and an image nobody will publish is not worth the minutes.
+  It can also be started by hand, `gh workflow run ci.yml --ref <branch>`, to
+  rerun a check or, from main with `publish_image`, to publish an image.
 
 ## Dependencies
 - **Node and npm.** One lockfile, `package-lock.json`.

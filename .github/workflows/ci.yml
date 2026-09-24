@@ -12,7 +12,19 @@ name: CI
 # A pull request runs check, build and security. `npm run build` is what
 # catches a build error there; the container image is only built on main and
 # on release tags, where it is also published.
+#
+# It can also be started by hand, to rerun a check or to publish an image
+# without a new push:
+#
+#   gh workflow run ci.yml --ref <branch>
+#   gh workflow run ci.yml --ref main -f publish_image=true
 on:
+  workflow_dispatch:
+    inputs:
+      publish_image:
+        description: "Also build and publish the container image. Only honoured on main."
+        type: boolean
+        default: false
   pull_request:
   push:
     branches: [main]
@@ -161,10 +173,15 @@ jobs:
   # checked by the `build` job, and building an image it will never publish
   # costs a couple of minutes on every push to every branch.
   #
+  # A manual run publishes only when asked to, and only from main, so `latest`
+  # cannot be overwritten from a feature branch.
+  #
   # Nothing is published until the code compiles, the bundle is within budget
   # and the dependencies are clean.
   image:
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_image && github.ref == 'refs/heads/main')
     needs: [build, security]
     runs-on: ubuntu-latest
     steps:
