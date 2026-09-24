@@ -173,7 +173,15 @@ const readAnswer = async (
         if (typeof data.text === 'string') handlers.onDelta?.(data.text);
         break;
       case 'completed':
+        // Held to §5.2 before the store acts on it: content is a list, error
+        // when present has our shape, and empty content only comes with error.
         if (!Array.isArray(data.content)) throw upstreamError('completed carried no content array', traceId);
+        if (data.error !== undefined && !isErrorBody(data.error)) {
+          throw upstreamError('completed carried an error without the contract shape', traceId);
+        }
+        if (data.content.length === 0 && data.error === undefined) {
+          throw upstreamError('completed carried neither content nor error', traceId);
+        }
         return data as unknown as FinalAnswer;
       case 'error':
         if (!isErrorBody(data.error)) throw upstreamError('error event carried no error body', traceId);

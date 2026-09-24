@@ -129,6 +129,16 @@ describe("sendUserQuery", () => {
 		expect(onStarted).not.toHaveBeenCalled();
 	});
 
+	it("fails as upstream_error when completed is malformed", async () => {
+		const stringError = COMPLETED.replace('"sources":[]', '"sources":[],"error":"provider down"');
+		fetchOnce(streamResponse(STARTED + stringError));
+		expect(await failure(apiService.sendUserQuery(turn))).toMatchObject({ code: "upstream_error" });
+
+		const nothingToShow = COMPLETED.replace(/"content":\[.*?\],"sources"/, '"content":[],"sources"');
+		fetchOnce(streamResponse(STARTED + nothingToShow));
+		expect(await failure(apiService.sendUserQuery(turn))).toMatchObject({ code: "upstream_error" });
+	});
+
 	it("skips events it does not know", async () => {
 		fetchOnce(streamResponse(STARTED + 'event: heartbeat\ndata: {"sequence":2}\n\n' + COMPLETED));
 
