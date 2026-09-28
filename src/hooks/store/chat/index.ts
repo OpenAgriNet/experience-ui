@@ -287,7 +287,7 @@ async function streamTurn(
 			return false;
 		}
 
-		draw({ body: text, showListenRow: true });
+		draw({ body: text, showListenRow: true, sources: answer.sources });
 		set({ isInputLocked: false });
 		return true;
 	} catch (error) {

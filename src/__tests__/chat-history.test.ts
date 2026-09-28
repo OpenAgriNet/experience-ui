@@ -64,6 +64,15 @@ describe("buildHistory", () => {
 		expect(history.map((h) => h.text)).toEqual(["Tell me a joke", "I can help with farming questions only.", "Prices?", "Which district?"]);
 	});
 
+	it("sends only the answer text, never its sources", () => {
+		const history = buildHistory([user("Weather tomorrow?"), card("Light rain.", { sources: [{ id: "src_1", name: "IMD" }] })]);
+
+		expect(history).toEqual([
+			{ role: "user", text: "Weather tomorrow?" },
+			{ role: "assistant", text: "Light rain." }
+		]);
+	});
+
 	it("skips image messages and a question with no answer between two questions", () => {
 		const image: ChatMessage = { id: "img", role: "user", type: "image", imageUrl: "blob:x", createdAt: at() };
 		const history = buildHistory([image, card("Looks like leaf rust."), user("Lost question"), user("Weather today?"), card("Clear.")]);

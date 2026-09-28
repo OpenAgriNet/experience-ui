@@ -10,6 +10,8 @@
   "Listen": "सुनें",
   "selectLanguage": "भाषा चुनें",
   "disclaimerText": "AI-उत्पन्न जानकारी। कृपया स्वतंत्र रूप से सत्यापित करें।",
+  "source": "स्रोत",
+  "sources": "स्रोत",
   "recordingListening": "[botName] सुन रही है, कृपया बोलना शुरू करें।",
   "questions": [
     {

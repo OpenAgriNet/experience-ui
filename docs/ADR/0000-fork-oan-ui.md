@@ -134,6 +134,7 @@ is doing right now:
 |---|---|
 | **Streaming chat** | The client sends the turn to the Experience API as `POST /v1/chat` and reads the answer back as a stream of events. A stub layer (`stubs.enabled`) can stand in for the API during development and speaks the same stream; it is off by default |
 | **Markdown answers** | `react-markdown` + `remark-gfm`, with links forced to `target="_blank" rel="noopener noreferrer"` |
+| **Answer sources** | Under each answer, the sources it drew on, numbered from 1 by name. Copy includes them. Not shown under a failed answer |
 | **Copy an answer** | Client-side |
 | **Retry a failed answer** | Client-side |
 | **Light and dark theme** | Client-side |

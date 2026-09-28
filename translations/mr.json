@@ -10,6 +10,8 @@
   "recordingListening": "[botName] ऐकत आहे, बोलायला सुरुवात करा",
   "selectLanguage": "भाषा निवडा",
   "disclaimerText": "AI-निर्मित माहिती. कृपया स्वतंत्रपणे सत्यापित करा।",
+  "source": "स्रोत",
+  "sources": "स्रोत",
   "questions": [
     {
       "key": "schemes.info.pm_kisan",

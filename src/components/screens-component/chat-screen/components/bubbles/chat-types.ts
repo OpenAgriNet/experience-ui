@@ -1,3 +1,4 @@
+import type { AnswerSource } from "@/lib/api-service";
 import { type LanguageCode } from "../../config";
 
 export type MessageRole = "user" | "assistant" | "system";
@@ -25,6 +26,8 @@ export type CardMessage = MessageBase & {
 	traceId?: string;
 	title?: string;
 	body: string;
+	/** What the answer drew on, in the API's order. Set only on an answered card. */
+	sources?: AnswerSource[];
 	actions?: { id: string; label: string }[];
 	showListenRow?: boolean;
 	isError?: boolean;

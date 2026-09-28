@@ -8,9 +8,10 @@ import { FEATURES } from "@/lib/config/features";
 import { useLanguage } from "@/components/LanguageProvider";
 import { cn } from "@/lib/utils";
 import { SafeMarkdown } from "./safe-markdown";
+import { AnswerSources, formatSources, sourcesLabel } from "./answer-sources";
 
 export function CardBubble({ message }: { readonly message: CardMessage }) {
-	const { language } = useLanguage();
+	const { language, t } = useLanguage();
 	const playTTS = useChatStore((s) => s.playTTS);
 	const pauseTTS = useChatStore((s) => s.pauseTTS);
 	const resumeTTS = useChatStore((s) => s.resumeTTS);
@@ -48,7 +49,9 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 
 	const handleCopy = async () => {
 		try {
-			await navigator.clipboard.writeText(message.body);
+			const sources = message.isError ? [] : (message.sources ?? []);
+			const credits = formatSources(sources, sourcesLabel(t, sources.length));
+			await navigator.clipboard.writeText(credits ? `${message.body}\n\n${credits}` : message.body);
 			setShowCopySuccess(true);
 			setTimeout(() => setShowCopySuccess(false), 1000);
 		} catch (error) {
@@ -76,6 +79,8 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 						<div className={cn("prose prose-sm dark:prose-invert max-w-none text-base leading-relaxed text-foreground dark:text-[var(--aiBubbleText-dark)] break-words overflow-wrap-anywhere", message.isError && "text-red-600 dark:text-red-400 font-medium")}>
 							<SafeMarkdown>{message.body}</SafeMarkdown>
 						</div>
+
+						{!message.isError && <AnswerSources sources={message.sources} />}
 
 						{/* Retry Button for error messages */}
 						{isRetryableError && (
