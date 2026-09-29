@@ -8,6 +8,8 @@
   "Listen": "கேளுங்கள்",
   "selectLanguage": "மொழி தேர்ந்தெடு",
   "disclaimerText": "AI-ஆல் உருவாக்கப்பட்ட உள்ளடக்கம். தேவைப்பட்டால் உள்ளூரில் சரிபார்க்கவும்.",
+  "source": "ஆதாரம்",
+  "sources": "ஆதாரங்கள்",
   "questions": [
     {
       "key": "schemes.info.pm_kisan",

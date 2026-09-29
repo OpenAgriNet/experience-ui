@@ -8,6 +8,8 @@
   "Listen": "শুনুন",
   "selectLanguage": "ভাষা নির্বাচন করুন",
   "disclaimerText": "AI-উৎপন্ন তথ্য। প্রয়োজন হলে স্থানীয়ভাবে যাচাই করুন।",
+  "source": "উৎস",
+  "sources": "উৎসসমূহ",
   "questions": [
     {
       "key": "schemes.info.pm_kisan",

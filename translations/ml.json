@@ -8,6 +8,8 @@
   "Listen": "കേൾക്കുക",
   "selectLanguage": "ഭാഷ തിരഞ്ഞെടുക്കുക",
   "disclaimerText": "AI-ഉത്‌പാദിത ഉള്ളടക്കം. ആവശ്യമെങ്കിൽ പ്രാദേശികമായി പരിശോധിക്കുക.",
+  "source": "ഉറവിടം",
+  "sources": "ഉറവിടങ്ങൾ",
   "questions": [
     {
       "key": "schemes.info.pm_kisan",

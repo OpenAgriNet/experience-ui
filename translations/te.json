@@ -8,6 +8,8 @@
   "Listen": "వినండి",
   "selectLanguage": "భాష ఎంచుకోండి",
   "disclaimerText": "AI-ఉత్పత్తి సమాచారం. అవసరమైతే స్థానికంగా ధృవీకరించండి.",
+  "source": "మూలం",
+  "sources": "మూలాలు",
   "questions": [
     {
       "key": "schemes.info.pm_kisan",
