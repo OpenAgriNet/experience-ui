@@ -138,6 +138,7 @@ is doing right now:
 | **Copy an answer** | Client-side |
 | **Retry a failed answer** | Client-side |
 | **Light and dark theme** | Client-side |
+| **Language picker** | Ten languages. The chosen one is kept between visits and sent with each question as both the question and answer language. Opens in `defaultLanguage` until one is picked |
 | **Location** | The browser is asked once for the user's coordinates, which are attached to each chat request. A denied prompt is a normal outcome: the request is sent without them |
 | **Runtime configuration** | Brand, theme and the flags below are read from `/config.json` at boot and can be changed on a running deployment without a rebuild |
 
@@ -154,7 +155,6 @@ configuration change rather than a rewrite.
 | **Spoken answers** | Text-to-speech in the Experience API |
 | **Image questions** | The DSS image content item, and upload in the Experience API |
 | **Follow-up suggestions** | A suggestions endpoint |
-| **Languages other than English** | A DSS that answers in them. The client is pinned to English; the other nine remain in the translation files |
 
 ### 6.3 The rule this expresses
 
