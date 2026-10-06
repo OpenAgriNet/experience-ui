@@ -49,7 +49,7 @@
     "imageQuestions": false,
     "suggestions": false,
     "geolocation": true,
-    "languageSelector": false
+    "languageSelector": true
   },
   "brand": {
     "appName": "Agri Assistant",

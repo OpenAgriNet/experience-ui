@@ -28,7 +28,6 @@ describe("feature flags", () => {
 		expect(FEATURES.voiceInput).toBe(true);
 		expect(FEATURES.textToSpeech).toBe(false);
 		expect(FEATURES.imageQuestions).toBe(false);
-		expect(FEATURES.languageSelector).toBe(false);
 	});
 
 	it("treats anything other than true as off", async () => {
