@@ -20,7 +20,8 @@ export type FeatureName =
 	| "imageQuestions"
 	| "suggestions"
 	| "geolocation"
-	| "languageSelector";
+	| "languageSelector"
+	| "forms";
 
 const configured = getConfig().features ?? {};
 
@@ -30,5 +31,6 @@ export const FEATURES: Record<FeatureName, boolean> = {
 	imageQuestions: configured.imageQuestions === true,
 	suggestions: configured.suggestions === true,
 	geolocation: configured.geolocation === true,
-	languageSelector: configured.languageSelector === true
+	languageSelector: configured.languageSelector === true,
+	forms: configured.forms === true
 };

@@ -20,6 +20,8 @@ import type {
   ApiErrorBody,
   ChatTurnRequest,
   FinalAnswer,
+  FormBlock,
+  FormSubmission,
   SuggestionItem,
   TranscriptionResponse,
 } from '@/lib/api-service';
@@ -169,6 +171,118 @@ ${STUB_NOTE}`,
 
 let chatReplyIndex = 0;
 
+// --- Forms (#212) -------------------------------------------------------------
+// The DSS's form path, faked: a grievance question gets a form, a submission
+// gets a ticket. A phone ending in 0000 is rejected, to show a form_error. A
+// phone ending in 1111 finds the provider down.
+
+const ASKS_FOR_A_FORM = /grievance|complaint|शिकायत|तक्रार/i;
+
+/**
+ * The PMFBY grievance form as the contract shows it (#205, 23 Oct). The
+ * client turns these fields into JSON Schema for RJSF.
+ */
+export const PMFBY_FIELDS: FormBlock['fields'] = [
+  { name: 'enrolmentId', label: 'Application number', kind: 'text', required: true, maxLength: 64 },
+  { name: 'applicantPhone', label: 'Phone used at enrolment', kind: 'text', required: true, pattern: '^[6-9][0-9]{9}$' },
+  { name: 'cropYear', label: 'Crop year', kind: 'text', required: true, pattern: '^[0-9]{4}$' },
+  {
+    name: 'season',
+    label: 'Season',
+    kind: 'select',
+    required: true,
+    options: [
+      { value: 'Kharif', label: 'Kharif' },
+      { value: 'Rabi', label: 'Rabi' },
+      { value: 'Zaid', label: 'Zaid' },
+    ],
+  },
+  { name: 'grievance.description', label: 'What went wrong', kind: 'textarea', required: true, minLength: 10, maxLength: 2000 },
+];
+
+const offerFormReply = (): StubReply => ({
+  outcome: { status: 'requires_input', cause: null },
+  content: [
+    {
+      type: 'text',
+      text: `To file your PMFBY complaint, I need a few details.\n\n${STUB_NOTE}`,
+      citations: [],
+    },
+    {
+      type: 'form',
+      formId: crypto.randomUUID(),
+      context: { schema: 'PMFBYGrievance/v0.1', action: 'support' },
+      fields: PMFBY_FIELDS,
+    },
+  ],
+  sources: [],
+});
+
+const submissionReply = (submission: FormSubmission): StubReply => {
+  const phone = submission.fields.find((f) => f.name === 'applicantPhone')?.value ?? '';
+  if (phone.endsWith('1111')) {
+    return {
+      outcome: { status: 'unavailable', cause: 'provider_unavailable' },
+      content: [
+        {
+          type: 'text',
+          text: `Your complaint was not filed. The PMFBY service is not responding. Please try again later.\n\n${STUB_NOTE}`,
+          citations: [],
+        },
+      ],
+      sources: [],
+      error: { code: 'provider_unavailable', message: 'PMFBY grievance provider timed out', retryable: true },
+    };
+  }
+  if (phone.endsWith('0000')) {
+    return {
+      outcome: { status: 'requires_input', cause: 'invalid_input' },
+      content: [
+        { type: 'text', text: `One detail needs fixing.\n\n${STUB_NOTE}`, citations: [] },
+        {
+          type: 'form_error',
+          formId: submission.formId,
+          context: submission.context,
+          submissionId: submission.submissionId,
+          fields: [
+            {
+              name: 'applicantPhone',
+              label: 'Phone used at enrolment',
+              error: 'This phone is not the one used at enrolment.',
+            },
+          ],
+        },
+      ],
+      sources: [],
+    };
+  }
+
+  const ticket = String(Math.floor(1e14 + Math.random() * 9e14));
+  const filedOn = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return {
+    outcome: { status: 'answered', cause: null },
+    content: [
+      {
+        type: 'text',
+        text: `Your complaint is filed. **Ticket number ${ticket}**, filed on ${filedOn}. Keep this ticket and the phone number you gave to check it later.\n\n${STUB_NOTE}`,
+        citations: [],
+      },
+    ],
+    sources: [],
+  };
+};
+
+/** The reply for this request: the form path when it applies, the cycle otherwise. */
+const replyFor = (request: ChatTurnRequest): StubReply => {
+  const submission = request.content?.find((item) => item.type === 'form');
+  if (submission) return submissionReply(submission);
+  if (request.query && ASKS_FOR_A_FORM.test(request.query)) return offerFormReply();
+
+  const reply = CHAT_REPLIES[chatReplyIndex % CHAT_REPLIES.length] as StubReply;
+  chatReplyIndex += 1;
+  return reply;
+};
+
 const frame = (event: string, data: unknown): string =>
   `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 
@@ -179,8 +293,7 @@ const frame = (event: string, data: unknown): string =>
  * stream's content can be tested without its timing.
  */
 export const stubChatFrames = (request: ChatTurnRequest): string[] => {
-  const reply = CHAT_REPLIES[chatReplyIndex % CHAT_REPLIES.length] as StubReply;
-  chatReplyIndex += 1;
+  const reply = replyFor(request);
 
   const ids = {
     sessionId: request.sessionId,

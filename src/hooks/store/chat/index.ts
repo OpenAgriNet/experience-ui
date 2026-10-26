@@ -200,9 +200,9 @@ function getResponseLanguage(language: string): LanguageCode | undefined {
 	return language in LANGUAGES ? (language as LanguageCode) : undefined;
 }
 
-/** The assistant's final text: every content item, in order, joined by a blank line (§4.1). */
+/** The assistant's final text: every text item, in order, joined by a blank line (§4.1). */
 function answerText(answer: FinalAnswer): string {
-	return answer.content.map((item) => item.text).join("\n\n");
+	return answer.content.flatMap((item) => ("text" in item ? [item.text] : [])).join("\n\n");
 }
 
 /** Replace the message with `card.id`, or append it when it is not there yet. */

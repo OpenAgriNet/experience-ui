@@ -25,12 +25,79 @@ export interface HistoryItem {
   text: string;
 }
 
+// --- Forms ------------------------------------------------------------------
+// Shapes follow the DSS form design (decision-support-system,
+// docs/exploration/form-flow.md). The Experience API does not carry them yet
+// (#211), so only the stubs speak them today. Behind the `forms` flag.
+
+export type FormFieldKind = 'text' | 'textarea' | 'select' | 'secret';
+
+export interface FormFieldOption {
+  value: string;
+  label: string;
+}
+
+/** One field the farmer fills in, with the only rules the DSS sends. */
+export interface FormField {
+  /** The pack's path, such as `grievance.description`. A plain key, not a path to walk. */
+  name: string;
+  label: string;
+  kind: FormFieldKind;
+  required?: boolean;
+  pattern?: string;
+  minLength?: number;
+  maxLength?: number;
+  options?: FormFieldOption[];
+}
+
+/** The form's type. Opaque to the client: copied back as received. */
+export type FormContext = Record<string, unknown>;
+
+/**
+ * The `form` block: the DSS asks for details (#205). The client turns `fields`
+ * into JSON Schema for RJSF to draw (`lib/forms/json-schema.ts`).
+ */
+export interface FormBlock {
+  type: 'form';
+  /** Names this one offered form. */
+  formId: string;
+  context: FormContext;
+  fields: FormField[];
+}
+
+export interface FormFieldError {
+  name: string;
+  label: string;
+  error: string;
+}
+
+/** The `form_error` block: a submission the DSS rejected. Only the failed fields. */
+export interface FormErrorBlock {
+  type: 'form_error';
+  formId: string;
+  context: FormContext;
+  submissionId: string;
+  fields: FormFieldError[];
+}
+
+/** The `form` item the client sends: the farmer's values for one form. */
+export interface FormSubmission {
+  type: 'form';
+  formId: string;
+  context: FormContext;
+  /** Made by the client, new for every submit. */
+  submissionId: string;
+  fields: { name: string; value: string }[];
+}
+
 /** One turn from the client. `location` is added here when the browser gave one. */
 export interface ChatTurn {
   sessionId: string;
   /** Id of the message in `query`. A retry sends the same one again. */
   messageId: string;
-  query: string;
+  /** A typed question. A form submission sends `content` instead. */
+  query?: string;
+  content?: FormSubmission[];
   /** Every completed exchange so far, oldest first. The API stores nothing. */
   history: HistoryItem[];
   language: { source: string; target: string };
@@ -46,7 +113,9 @@ export interface Citation {
 
 export type AnswerContent =
   | { type: 'text'; text: string; citations?: Citation[] }
-  | { type: 'refusal'; text: string };
+  | { type: 'refusal'; text: string }
+  | FormBlock
+  | FormErrorBlock;
 
 export interface AnswerSource {
   id: string;
