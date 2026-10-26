@@ -16,11 +16,11 @@
  */
 
 import { getConfig } from '@/lib/config/runtime-config';
+import pmfbyGrievanceForm from '@/lib/stubs/pmfby-grievance-form.json';
 import type {
   ApiErrorBody,
   ChatTurnRequest,
   FinalAnswer,
-  FormBlock,
   FormSubmission,
   SuggestionItem,
   TranscriptionResponse,
@@ -179,44 +179,19 @@ let chatReplyIndex = 0;
 const ASKS_FOR_A_FORM = /grievance|complaint|शिकायत|तक्रार/i;
 
 /**
- * The PMFBY grievance form as the contract shows it (#205, 23 Oct). The
- * client turns these fields into JSON Schema for RJSF.
+ * The answer the DSS sends when it needs the PMFBY grievance form, as the
+ * contract shows it (#205, 23 Oct): a text block, then the form as a field
+ * list. Edit the JSON to try another form. Each offer gets a new `formId`.
  */
-export const PMFBY_FIELDS: FormBlock['fields'] = [
-  { name: 'enrolmentId', label: 'Application number', kind: 'text', required: true, maxLength: 64 },
-  { name: 'applicantPhone', label: 'Phone used at enrolment', kind: 'text', required: true, pattern: '^[6-9][0-9]{9}$' },
-  { name: 'cropYear', label: 'Crop year', kind: 'text', required: true, pattern: '^[0-9]{4}$' },
-  {
-    name: 'season',
-    label: 'Season',
-    kind: 'select',
-    required: true,
-    options: [
-      { value: 'Kharif', label: 'Kharif' },
-      { value: 'Rabi', label: 'Rabi' },
-      { value: 'Zaid', label: 'Zaid' },
-    ],
-  },
-  { name: 'grievance.description', label: 'What went wrong', kind: 'textarea', required: true, minLength: 10, maxLength: 2000 },
-];
-
-const offerFormReply = (): StubReply => ({
-  outcome: { status: 'requires_input', cause: null },
-  content: [
-    {
-      type: 'text',
-      text: `To file your PMFBY complaint, I need a few details.\n\n${STUB_NOTE}`,
-      citations: [],
-    },
-    {
-      type: 'form',
-      formId: crypto.randomUUID(),
-      context: { schema: 'PMFBYGrievance/v0.1', action: 'support' },
-      fields: PMFBY_FIELDS,
-    },
-  ],
-  sources: [],
-});
+const offerFormReply = (): StubReply => {
+  const reply = structuredClone(pmfbyGrievanceForm) as StubReply;
+  reply.content = reply.content.map((item) => {
+    if (item.type === 'text') return { ...item, text: `${item.text}\n\n${STUB_NOTE}` };
+    if (item.type === 'form') return { ...item, formId: crypto.randomUUID() };
+    return item;
+  });
+  return reply;
+};
 
 const submissionReply = (submission: FormSubmission): StubReply => {
   const phone = submission.fields.find((f) => f.name === 'applicantPhone')?.value ?? '';
