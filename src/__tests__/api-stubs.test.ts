@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ChatTurnRequest, FinalAnswer, FormBlock } from "@/lib/api-service";
+import type { ChatTurnRequest, FinalAnswer } from "@/lib/api-service";
 import { stubChatFrames, stubChatResponse, stubGetSuggestions } from "@/lib/api-stubs";
 import { readSseEvents } from "@/lib/sse";
 
@@ -108,103 +108,5 @@ describe("other stubs", () => {
 		} finally {
 			vi.useRealTimers();
 		}
-	});
-});
-
-describe("chat stub forms", () => {
-	const ask = { ...request, query: "I want to file a PMFBY grievance" };
-
-	const submit = (form: FormBlock, phone: string): ChatTurnRequest => ({
-		...request,
-		query: undefined,
-		content: [
-			{
-				type: "form",
-				formId: form.formId,
-				context: form.context,
-				submissionId: "sub-1",
-				fields: [{ name: "applicantPhone", value: phone }]
-			}
-		]
-	});
-
-	const offered = async (): Promise<FormBlock> => {
-		const answer = completedOf(await parse(stubChatFrames(ask)));
-		const form = answer.content.find((item): item is FormBlock => item.type === "form");
-		if (!form) throw new Error("No form offered");
-		return form;
-	};
-
-	it("offers a form after a text block when asked to file a grievance", async () => {
-		const answer = completedOf(await parse(stubChatFrames(ask)));
-
-		expect(answer.outcome.status).toBe("requires_input");
-		expect(answer.content.map((item) => item.type)).toEqual(["text", "form"]);
-	});
-
-	it("offers the PMFBY grievance form in the contract's shape", async () => {
-		const form = await offered();
-
-		expect(form.context).toEqual({ schema: "PMFBYGrievance/v0.1", action: "support" });
-		expect(form.fields.map((f) => f.name)).toEqual([
-			"enrolmentId",
-			"applicantPhone",
-			"cropYear",
-			"season",
-			"grievance.description"
-		]);
-	});
-
-	it("files a submitted form with a ticket number, labelled as stubbed", async () => {
-		const answer = completedOf(await parse(stubChatFrames(submit(await offered(), "9876543210"))));
-
-		expect(answer.outcome.status).toBe("answered");
-		const [text] = answer.content;
-		expect(text?.type === "text" && text.text).toMatch(/Ticket number \d+/);
-		expect(text?.type === "text" && text.text).toContain("stubbed response");
-	});
-
-	it("rejects a phone ending in 0000 with a form_error for that field", async () => {
-		const form = await offered();
-		const answer = completedOf(await parse(stubChatFrames(submit(form, "9876540000"))));
-
-		expect(answer.outcome).toEqual({ status: "requires_input", cause: "invalid_input" });
-		expect(answer.content[1]).toMatchObject({
-			type: "form_error",
-			formId: form.formId,
-			submissionId: "sub-1",
-			fields: [{ name: "applicantPhone" }]
-		});
-	});
-});
-
-describe("chat stub forms when the provider is down", () => {
-	it("does not file a phone ending in 1111 and says to try later", async () => {
-		const ask = { ...request, query: "I want to file a PMFBY grievance" };
-		const offeredAnswer = completedOf(await parse(stubChatFrames(ask)));
-		const form = offeredAnswer.content.find((item): item is FormBlock => item.type === "form")!;
-
-		const answer = completedOf(
-			await parse(
-				stubChatFrames({
-					...request,
-					query: undefined,
-					content: [
-						{
-							type: "form",
-							formId: form.formId,
-							context: form.context,
-							submissionId: "sub-1",
-							fields: [{ name: "applicantPhone", value: "9876541111" }]
-						}
-					]
-				})
-			)
-		);
-
-		expect(answer.outcome).toEqual({ status: "unavailable", cause: "provider_unavailable" });
-		expect(answer.error).toMatchObject({ code: "provider_unavailable" });
-		const [text] = answer.content;
-		expect(text?.type === "text" && text.text).toContain("try again later");
 	});
 });

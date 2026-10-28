@@ -28,7 +28,7 @@ export interface HistoryItem {
 // --- Forms ------------------------------------------------------------------
 // Shapes follow the DSS form design (decision-support-system,
 // docs/exploration/form-flow.md). The Experience API does not carry them yet
-// (#211), so only the stubs speak them today. Behind the `forms` flag.
+// (#211). Behind the `forms` flag.
 
 export type FormFieldKind = 'text' | 'textarea' | 'select' | 'secret';
 
