@@ -50,7 +50,7 @@ function toProperty(field: FormField): Schema {
 	if (field.pattern !== undefined) property.pattern = field.pattern;
 	if (field.minLength !== undefined) property.minLength = field.minLength;
 	if (field.maxLength !== undefined) property.maxLength = field.maxLength;
-	if (field.options) property.oneOf = field.options.map((o) => ({ const: o.value, title: o.label }));
+	if (field.options?.length) property.oneOf = field.options.map((o) => ({ const: o.value, title: o.label }));
 	return property;
 }
 

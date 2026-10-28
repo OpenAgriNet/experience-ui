@@ -68,6 +68,18 @@ describe("fieldsToSchema", () => {
 			grievance: { description: { "ui:widget": "textarea" } }
 		});
 	});
+
+	it("keeps a text field with an empty options list a text field, as the DSS sends it", () => {
+		const { schema } = fieldsToSchema([
+			{ name: "applicantMobile", label: "Applicant mobile", kind: "text", required: true, pattern: "^[6-9][0-9]{9}$", options: [] }
+		]);
+
+		expect(schema.properties?.applicantMobile).toEqual({
+			type: "string",
+			title: "Applicant mobile",
+			pattern: "^[6-9][0-9]{9}$"
+		});
+	});
 });
 
 describe("form data and values", () => {
