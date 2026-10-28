@@ -50,7 +50,7 @@
     "suggestions": false,
     "geolocation": true,
     "languageSelector": true,
-    "forms": false
+    "forms": true
   },
   "brand": {
     "appName": "Agri Assistant",
