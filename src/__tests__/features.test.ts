@@ -55,7 +55,7 @@ describe("feature flags", () => {
 		await loadRuntimeConfig();
 		const { FEATURES } = await import("@/lib/config/features");
 
-		expect(Object.keys(FEATURES)).toHaveLength(6);
+		expect(Object.keys(FEATURES)).toHaveLength(7);
 		expect(Object.values(FEATURES).every((v) => typeof v === "boolean")).toBe(true);
 		warn.mockRestore();
 	});

@@ -1,4 +1,5 @@
-import type { AnswerSource } from "@/lib/api-service";
+import type { AnswerSource, FormBlock } from "@/lib/api-service";
+import type { FormRow } from "@/lib/forms/rows";
 import { type LanguageCode } from "../../config";
 
 export type MessageRole = "user" | "assistant" | "system";
@@ -34,6 +35,15 @@ export type CardMessage = MessageBase & {
 	failedUserText?: string;
 	failedLanguage?: string;
 	responseLanguage?: LanguageCode;
+	/** A form the assistant asked the farmer to fill in, below the text. */
+	form?: FormBlock;
+};
+
+/** The farmer's sent form, as they see it: label and value, secrets as dots. */
+export type FormSubmissionMessage = MessageBase & {
+	type: "form_submission";
+	formId: string;
+	rows: FormRow[];
 };
 
 type QuickRepliesMessage = MessageBase & {
@@ -59,4 +69,11 @@ type ImageMessage = MessageBase & {
 	caption?: string;
 };
 
-export type ChatMessage = TextMessage | CardMessage | QuickRepliesMessage | SystemMessage | AudioMessage | ImageMessage;
+export type ChatMessage =
+	| TextMessage
+	| CardMessage
+	| QuickRepliesMessage
+	| SystemMessage
+	| AudioMessage
+	| ImageMessage
+	| FormSubmissionMessage;

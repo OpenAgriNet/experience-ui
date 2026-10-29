@@ -2,17 +2,26 @@ import { create, type StoreApi } from "zustand";
 import type {
 	CardMessage,
 	ChatMessage,
+	FormSubmissionMessage,
 	TextMessage
 } from "@/components/screens-component/chat-screen/components/bubbles/chat-types";
 import { LANGUAGES, type LanguageCode } from "@/components/screens-component/chat-screen/config";
 import { FEATURES } from "@/lib/config/features";
 
 import { type Suggestion } from "@/components/screens-component/chat-screen/api/suggestions-api";
-import apiService, { ApiError, type ChatStreamHandlers, type FinalAnswer } from "@/lib/api-service";
+import apiService, {
+	ApiError,
+	type ChatStreamHandlers,
+	type FinalAnswer,
+	type FormBlock,
+	type FormSubmission
+} from "@/lib/api-service";
 import { shuffle, randomPick } from "@/lib/qa-utils";
 import type { ToastType } from "@/components/screens-component/chat-screen/components/toast";
 import { neutralizeHtmlMarkup } from "@/lib/security/html";
 import { buildHistory } from "./history";
+import { clearForms, loadForm, removeForm, saveForm, type FormStatus } from "@/lib/forms/form-storage";
+import { formRows } from "@/lib/forms/rows";
 
 
 
@@ -36,8 +45,18 @@ export type QuickAction = {
 	prompt: string;
 };
 
+/** Where an offered form stands. What the farmer typed lives in the form and in storage, never here. */
+type FormState = {
+	status: FormStatus;
+	errors: Record<string, string>;
+	/** The fields asked again after the DSS flagged them. Unset: the whole form. */
+	asked?: string[];
+};
+
 type ChatStore = {
 	messages: ChatMessage[];
+	/** Every form offered in this chat, by `formId`. */
+	forms: Record<string, FormState>;
 	quickActions: QuickAction[];
 	draft: string;
 	suggestions: Suggestion[];
@@ -52,6 +71,8 @@ type ChatStore = {
 	sendText: (text: string, language: string, t?: any, messageId?: string) => Promise<void>;
 	sendAudio: (blob: Blob, sessionId: string, language: string) => Promise<void>;
 	sendImage: (imageFile: File, language: string, t?: any) => Promise<void>;
+	/** Send the farmer's values for one form, after they confirmed them. */
+	submitForm: (formId: string, values: Record<string, string>, language: string, t?: any) => Promise<void>;
 	sendQuickAction: (id: string, language: string, t?: any) => void;
 	sendQuickReply: (payload: string, language: string, t?: any) => void;
 	retryLastMessage: (language: string, t?: any) => void;
@@ -200,9 +221,9 @@ function getResponseLanguage(language: string): LanguageCode | undefined {
 	return language in LANGUAGES ? (language as LanguageCode) : undefined;
 }
 
-/** The assistant's final text: every content item, in order, joined by a blank line (§4.1). */
+/** The assistant's final text: every text item, in order, joined by a blank line (§4.1). */
 function answerText(answer: FinalAnswer): string {
-	return answer.content.map((item) => item.text).join("\n\n");
+	return answer.content.flatMap((item) => ("text" in item ? [item.text] : [])).join("\n\n");
 }
 
 /** Replace the message with `card.id`, or append it when it is not there yet. */
@@ -215,8 +236,8 @@ function upsertMessage(messages: ChatMessage[], card: ChatMessage): ChatMessage[
 }
 
 type TurnContext = {
-	/** What Retry sends again. */
-	failedUserText: string;
+	/** What Retry sends again. None for a form: the form itself is the retry. */
+	failedUserText?: string;
 	language: string;
 	responseLanguage?: LanguageCode;
 	/** Shown when the turn failed and the API sent no words of its own. */
@@ -230,13 +251,14 @@ type TurnContext = {
  * text the typing indicator stays, where an empty bubble would replace it with
  * nothing. Its id is the API's `assistantMessageId`. On `completed` the
  * streamed text is replaced by the answer's `content`, which is authoritative
- * (§5.1). Resolves true when the turn produced an answer without `error`.
+ * (§5.1). A form in the answer goes on the card, when forms are on.
+ * Resolves with the answer when it came without `error`, null otherwise.
  */
 async function streamTurn(
 	set: StoreApi<ChatStore>["setState"],
 	send: (handlers: ChatStreamHandlers) => Promise<FinalAnswer>,
 	ctx: TurnContext
-): Promise<boolean> {
+): Promise<FinalAnswer | null> {
 	let started: { assistantMessageId: string; traceId: string } | null = null;
 	let cardId: string | null = null;
 	let createdAt: string | null = null;
@@ -284,19 +306,25 @@ async function streamTurn(
 			// Its own words when it sent any, the client's otherwise.
 			drawFailure(answer.error.traceId ?? answer.traceId, answer.error.retryable, text || ctx.genericErrorMessage);
 			set({ isInputLocked: false });
-			return false;
+			return null;
 		}
 
-		draw({ body: text, showListenRow: true, sources: answer.sources });
+		const form = FEATURES.forms ? answer.content.find((item): item is FormBlock => item.type === "form") : undefined;
+		draw({ body: text, showListenRow: true, sources: answer.sources, form });
+		if (form) {
+			saveForm({ form, status: "open", errors: {}, values: {} });
+			set((state) => ({ forms: { ...state.forms, [form.formId]: { status: "open", errors: {} } } }));
+		}
+		// The input stays usable under a form: the farmer may ask something else.
 		set({ isInputLocked: false });
-		return true;
+		return answer;
 	} catch (error) {
 		console.error("Error sending turn:", error);
 		// A failure fetch itself reports, such as no network, is worth a retry.
 		const apiError = error instanceof ApiError ? error : null;
 		drawFailure(apiError?.traceId, apiError ? apiError.retryable : true, ctx.genericErrorMessage);
 		set({ isInputLocked: false });
-		return false;
+		return null;
 	}
 }
 
@@ -314,6 +342,35 @@ async function refreshSuggestions(
 			text: s.question,
 			label: s.question
 		}))
+	});
+}
+
+/** Record where a form stands, in the store and in its saved copy. */
+function setFormState(set: StoreApi<ChatStore>["setState"], form: FormBlock, state: FormState): void {
+	set((s) => ({ forms: { ...s.forms, [form.formId]: state } }));
+	if (state.status === "filed" || state.status === "closed") {
+		removeForm(form.formId);
+		return;
+	}
+	saveForm({ form, ...state, values: loadForm(form.formId)?.values ?? {} });
+}
+
+/**
+ * Draw a form with errors again under the newest reply, so the farmer finds it
+ * where they are reading. The earlier copy goes: their sent bubble already
+ * shows what went.
+ */
+function moveFormToLatestReply(set: StoreApi<ChatStore>["setState"], form: FormBlock): void {
+	set((state) => {
+		const latest = state.messages.at(-1);
+		if (latest?.type !== "card") return {};
+		return {
+			messages: state.messages.map((m) => {
+				if (m.id === latest.id) return { ...m, form } as CardMessage;
+				if (m.type === "card" && m.form?.formId === form.formId) return { ...m, form: undefined };
+				return m;
+			})
+		};
 	});
 }
 
@@ -335,6 +392,7 @@ let hasResolvedLocationAttempt = false;
 
 export const useChatStore = create<ChatStore>((set, get) => ({
 	messages: [],
+	forms: {},
 	quickActions: quickActionSeeds,
 	draft: "",
 	suggestions: [],
@@ -353,6 +411,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 		const sid = crypto.randomUUID();
 		set({ sessionId: sid });
 		apiService.setSessionId(sid);
+		// A new chat starts with no forms; one saved by an earlier page has no chat to go back to.
+		clearForms();
 	},
 
 	setDraft: (value) => set(() => ({ draft: value })),
@@ -446,8 +506,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 		// lives exactly as long as the history does (contract §3).
 		const sid = crypto.randomUUID();
 		apiService.setSessionId(sid);
+		clearForms();
 		set(() => ({
 			messages: [],
+			forms: {},
 			draft: "",
 			suggestions: [],
 			isAssistantTyping: false,
@@ -484,7 +546,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			apiService.setSessionId(currentSession);
 		}
 
-		const answered = await streamTurn(
+		const answer = await streamTurn(
 			set,
 			(handlers) =>
 				apiService.sendUserQuery(
@@ -507,7 +569,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			}
 		);
 
-		if (answered) await refreshSuggestions(set, currentSession, language);
+		if (answer) await refreshSuggestions(set, currentSession, language);
 	},
 
 	sendImage: async (imageFile, language, t) => {
@@ -576,7 +638,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			apiService.setSessionId(currentSession);
 		}
 
-		const answered = await streamTurn(
+		const answer = await streamTurn(
 			set,
 			(handlers) =>
 				apiService.sendImageQuery(
@@ -599,7 +661,88 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			}
 		);
 
-		if (answered) await refreshSuggestions(set, currentSession, language);
+		if (answer) await refreshSuggestions(set, currentSession, language);
+	},
+
+	submitForm: async (formId, values, language, t) => {
+		const card = get().messages.find(
+			(m): m is CardMessage => m.type === "card" && m.form?.formId === formId
+		);
+		const form = card?.form;
+		// Checked and set in one step, so a second tap while sending does nothing.
+		if (!form || get().forms[formId]?.status !== "open") return;
+		const asked = get().forms[formId]?.asked;
+		setFormState(set, form, { status: "sending", errors: {}, asked });
+
+		get().stopTTS();
+		const sent: FormSubmissionMessage = {
+			id: crypto.randomUUID(),
+			role: "user",
+			type: "form_submission",
+			formId,
+			rows: formRows(form, values),
+			status: "sent",
+			createdAt: new Date().toISOString()
+		};
+		set((state) => ({
+			messages: [...state.messages, sent],
+			suggestions: [],
+			isAssistantTyping: true,
+			isInputLocked: true
+		}));
+
+		const { sessionId } = get();
+		const currentSession = sessionId || crypto.randomUUID();
+		if (!sessionId) {
+			set({ sessionId: currentSession });
+			apiService.setSessionId(currentSession);
+		}
+
+		const submission: FormSubmission = {
+			type: "form",
+			formId,
+			context: form.context,
+			submissionId: crypto.randomUUID(),
+			fields: form.fields.map((field) => ({ name: field.name, value: (values[field.name] ?? "").trim() }))
+		};
+
+		const answer = await streamTurn(
+			set,
+			(handlers) =>
+				apiService.sendUserQuery(
+					{
+						sessionId: currentSession,
+						messageId: sent.id,
+						content: [submission],
+						history: buildHistory(get().messages),
+						language: { source: language, target: language }
+					},
+					handlers
+				),
+			{
+				language,
+				responseLanguage: getResponseLanguage(language),
+				genericErrorMessage: t
+					? String(t("chatErrorMessage"))
+					: "Sorry, there was an error processing your request. Please try again."
+			}
+		);
+
+		const rejected = answer?.content.find((item) => item.type === "form_error" && item.formId === formId);
+		if (rejected?.type === "form_error") {
+			moveFormToLatestReply(set, form);
+			setFormState(set, form, {
+				status: "open",
+				errors: Object.fromEntries(rejected.fields.map((f) => [f.name, f.error])),
+				asked: rejected.fields.map((f) => f.name)
+			});
+		} else if (answer?.outcome.status === "answered") {
+			setFormState(set, form, { status: "filed", errors: {}, asked });
+		} else {
+			// The system was down or the send failed. The reply says to try later;
+			// the form is not offered again.
+			setFormState(set, form, { status: "closed", errors: {}, asked });
+		}
 	},
 
 	sendAudio: async (blob, sessionId, language) => {

@@ -65,7 +65,7 @@ describe("chat stub", () => {
 		}
 
 		for (const answer of answers) {
-			for (const item of answer.content) expect(item.text).toContain("stubbed response");
+			for (const item of answer.content) expect("text" in item && item.text).toContain("stubbed response");
 		}
 		expect(answers.some((a) => a.content.some((item) => item.type === "refusal"))).toBe(true);
 		const failed = answers.find((a) => a.error);

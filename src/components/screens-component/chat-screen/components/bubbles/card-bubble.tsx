@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Copy, Volume2, Check, Pause, Play, RefreshCw } from "lucide-react";
@@ -9,6 +9,8 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { cn } from "@/lib/utils";
 import { SafeMarkdown } from "./safe-markdown";
 import { AnswerSources, formatSources, sourcesLabel } from "./answer-sources";
+// RJSF and ajv are large; only a chat that gets a form downloads them.
+const FormView = lazy(() => import("./form-view").then((m) => ({ default: m.FormView })));
 
 export function CardBubble({ message }: { readonly message: CardMessage }) {
 	const { language, t } = useLanguage();
@@ -79,6 +81,12 @@ export function CardBubble({ message }: { readonly message: CardMessage }) {
 						<div className={cn("prose prose-sm dark:prose-invert max-w-none text-base leading-relaxed text-foreground dark:text-[var(--aiBubbleText-dark)] break-words overflow-wrap-anywhere", message.isError && "text-red-600 dark:text-red-400 font-medium")}>
 							<SafeMarkdown>{message.body}</SafeMarkdown>
 						</div>
+
+						{message.form && FEATURES.forms && (
+							<Suspense fallback={null}>
+								<FormView form={message.form} />
+							</Suspense>
+						)}
 
 						{!message.isError && <AnswerSources sources={message.sources} />}
 
