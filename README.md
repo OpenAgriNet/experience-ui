@@ -61,14 +61,8 @@ The default, `/experience/api`, is the reference deployment's path (see
 
 The dev server proxies `api.baseUrl` to an Experience API on
 `http://localhost:8078`; set `DEV_API_URL` for another address. Without one,
-every question shows an error card.
-
-To work with no API at all, set `stubs.enabled` to `true` in
-`src/config/app-config.json`. Every endpoint then returns canned data, nothing
-leaves the browser, and the chat works end to end — each reply is labelled as
-stubbed so fabricated agricultural advice cannot be mistaken for real. The
-shipped file is the deployed one, so do not commit the change. See
-[`src/lib/api-stubs.ts`](src/lib/api-stubs.ts).
+every question shows an error card. There are no canned replies: to try the
+chat, run the Experience API and a DSS behind it.
 
 ## Git hooks
 
@@ -180,7 +174,7 @@ slash pins it to the domain root and breaks a sub-path deployment.
 ### Configuring a deployment
 
 Everything a deployment changes — name, logo, favicon, colours, which features
-are on, whether stubs are enabled — lives in `config.json`, read at boot and
+are on — lives in `config.json`, read at boot and
 applied without a rebuild. The image ships a default, so an unconfigured
 container runs.
 
