@@ -75,7 +75,7 @@ export default defineConfig({
 	],
 	server: {
 		port: 3000,
-		// With stubs off, calls to api.baseUrl go to a local Experience API the
+		// Calls to api.baseUrl go to a local Experience API the
 		// way the front proxy routes them in deployment: same origin for the
 		// browser, the prefix stripped before it reaches the API. The path is
 		// read from the same config file the app uses, so the two cannot drift.

@@ -1,13 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { getConfig } from '@/lib/config/runtime-config';
-import {
-  stubsEnabled,
-  stubChatResponse,
-  stubGetSuggestions,
-  stubGetTranscript,
-  stubTranscribeAudio,
-  stubUploadImage,
-} from '@/lib/api-stubs';
 import { readSseEvents } from '@/lib/sse';
 
 export interface LocationData {
@@ -26,9 +18,8 @@ export interface HistoryItem {
 }
 
 // --- Forms ------------------------------------------------------------------
-// Shapes follow the DSS form design (decision-support-system,
-// docs/exploration/form-flow.md). The Experience API does not carry them yet
-// (#211). Behind the `forms` flag.
+// Shapes follow the Experience API contract: §4.2 sends a filled form back,
+// §5.2 has the `form` and `form_error` items. Behind the `forms` flag.
 
 export type FormFieldKind = 'text' | 'textarea' | 'select' | 'secret';
 
@@ -323,9 +314,6 @@ class ApiService {
    * built up. Rejects with an ApiError for an error response, an `error`
    * event, or a stream that broke. A `completed` that carries `error` is not
    * a rejection: the caller reads `error` from it (§5.3).
-   *
-   * With stubs on, only the network call is swapped; the stub answers with the
-   * same event stream and everything after this line is the real code.
    */
   async sendUserQuery(turn: ChatTurn, handlers: ChatStreamHandlers = {}): Promise<FinalAnswer> {
     const request: ChatTurnRequest = {
@@ -333,16 +321,14 @@ class ApiService {
       ...(this.locationData && { location: this.locationData }),
     };
 
-    const response = stubsEnabled()
-      ? await stubChatResponse(request)
-      : await fetch(`${apiBaseUrl()}/v1/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'text/event-stream',
-          },
-          body: JSON.stringify(request),
-        });
+    const response = await fetch(`${apiBaseUrl()}/v1/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(request),
+    });
 
     if (!response.ok) {
       throw await errorFromResponse(response);
@@ -371,11 +357,6 @@ class ApiService {
 
   async uploadImage(imageFile: File): Promise<ImageUploadResponse> {
     try {
-      if (stubsEnabled()) {
-        return await stubUploadImage(imageFile);
-      }
-
-
       const formData = new FormData();
       formData.append('image', imageFile);
 
@@ -414,11 +395,6 @@ class ApiService {
 
   async getSuggestions(session: string, targetLang: string = 'mr'): Promise<SuggestionItem[]> {
     try {
-      if (stubsEnabled()) {
-        return await stubGetSuggestions();
-      }
-
-      
       const params = {
         session_id: session,
         target_lang: targetLang
@@ -445,11 +421,6 @@ class ApiService {
     lang_code: string
   ): Promise<TranscriptionResponse> {
     try {
-      if (stubsEnabled()) {
-        return await stubTranscribeAudio();
-      }
-
-      
       const payload = {
         audio_content: audioBase64,
         service_type: serviceType,
@@ -469,11 +440,6 @@ class ApiService {
   }
 
   async getTranscript(sessionId: string, text: string, targetLang: string): Promise<AxiosResponse<TTSResponse>> {
-    if (stubsEnabled()) {
-      return (await stubGetTranscript(sessionId)) as AxiosResponse<TTSResponse>;
-    }
-
-    
     const config = {
       timeout: 120000, // 120s timeout for TTS (can be slow on cold start)
     };

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mockConfig = vi.hoisted(() => ({ api: { baseUrl: "/api" }, stubs: { enabled: false } }));
+const mockConfig = vi.hoisted(() => ({ api: { baseUrl: "/api" } }));
 vi.mock("@/lib/config/runtime-config", () => ({ getConfig: () => mockConfig }));
 
 import apiService, { ApiError, type ChatTurn } from "@/lib/api-service";

@@ -132,7 +132,7 @@ is doing right now:
 
 | Feature | Notes |
 |---|---|
-| **Streaming chat** | The client sends the turn to the Experience API as `POST /v1/chat` and reads the answer back as a stream of events. A stub layer (`stubs.enabled`) can stand in for the API during development and speaks the same stream; it is off by default |
+| **Streaming chat** | The client sends the turn to the Experience API as `POST /v1/chat` and reads the answer back as a stream of events. It always calls the real API: the stub layer was removed (2026-10-29) |
 | **Markdown answers** | `react-markdown` + `remark-gfm`, with links forced to `target="_blank" rel="noopener noreferrer"` |
 | **Answer sources** | Under each answer, the sources it drew on, numbered from 1 by name. Copy includes them. Not shown under a failed answer |
 | **Copy an answer** | Client-side |
@@ -144,8 +144,7 @@ is doing right now:
 
 ### 6.2 Retained and switched off
 
-Each of these is implemented and has a stub standing in for its endpoint. None
-is reachable, because nothing can serve it yet. They are off in configuration
+Each of these is implemented. None is reachable, because nothing can serve it yet. They are off in configuration
 rather than removed, so that enabling one when the capability arrives is a
 configuration change rather than a rewrite.
 
@@ -163,10 +162,9 @@ behind it is switched off rather than left present and inert — a client that
 appears to offer a feature it cannot deliver misrepresents the platform it
 exists to demonstrate.
 
-This also sets which stubs are worth having. A canned response earns its place
-where the point is to exercise the surface with dummy data, which is true of
-chat and of nothing else. Everywhere else a flag is enough, and a stub as well
-would be redundant.
+*(Amended 2026-10-29.)* The client has no stubs. A canned chat reply could be
+taken for a real answer, and a form sent to a stub was never filed. A flag is
+enough for a surface with nothing behind it.
 
 ---
 

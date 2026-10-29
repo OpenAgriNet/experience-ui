@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/config/runtime-config", async () => {
 	const { default: shipped } = await import("@/config/app-config.json");
-	const config = { ...shipped, stubs: { enabled: false }, features: { forms: true } };
+	const config = { ...shipped, features: { forms: true } };
 	return { getConfig: () => config };
 });
 vi.mock("@/components/LanguageProvider", () => ({

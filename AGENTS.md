@@ -48,12 +48,10 @@ npm run build            # tsc -b && vite build
 docker compose up --build   # the deployable image, http://localhost:8080
 ```
 
-The client ships with stubs **off** and calls the Experience API at
-`api.baseUrl`. In `npm run dev` that path is proxied to a local API
-(`DEV_API_URL`, default `http://localhost:8078`). With no API running, set
-`stubs.enabled` to `true` in `src/config/app-config.json` for canned replies,
-each labelled as stubbed, and do not commit it: the shipped file is the
-deployed one.
+The client always calls the Experience API at `api.baseUrl`. In `npm run dev`
+that path is proxied to a local API (`DEV_API_URL`, default
+`http://localhost:8078`). There are no stubs: with no API running, every
+question shows an error card.
 
 ## Conventions
 Naming, git workflow, commit format, PR shape and linting are in
@@ -87,8 +85,7 @@ src/
 │   ├── auth/             # The identity seam. Returns a fixed local user and
 │   │                     # verifies nothing. How a credential reaches the API is
 │   │                     # deliberately undecided.
-│   ├── api-service.ts    # The client's entire server coupling. One file.
-│   └── api-stubs.ts      # Canned responses. Only chat is reachable today.
+│   └── api-service.ts    # The client's entire server coupling. One file.
 │
 ├── components/
 │   ├── ui/               # shadcn/ui. Vendored, kept as a whole API — knip reports

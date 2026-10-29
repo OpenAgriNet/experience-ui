@@ -68,20 +68,4 @@ describe("runtime config", () => {
 		expect(config.theme.fontSizes.base).toBeTruthy();
 		expect(config.languages.length).toBeGreaterThan(0);
 	});
-
-	it("lets a served config switch the stub layer off", async () => {
-		vi.stubGlobal(
-			"fetch",
-			vi.fn().mockResolvedValue({
-				ok: true,
-				json: async () => ({ stubs: { enabled: false } })
-			})
-		);
-
-		const { loadRuntimeConfig } = await freshModule();
-		await loadRuntimeConfig();
-		const { stubsEnabled } = await import("@/lib/api-stubs");
-
-		expect(stubsEnabled()).toBe(false);
-	});
 });
