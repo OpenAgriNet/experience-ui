@@ -10,12 +10,17 @@
   // global.css looks unused: tailwindcss, tw-animate-css and the typography
   // plugin are all @import-ed or @plugin-ed there. The rest are tooling
   // dependencies resolved by config files rather than by source.
+  //
+  // @rjsf/validator-ajv8 is imported by @rjsf/core's own index for a test
+  // helper, without being declared there, so the app must carry it. Nothing in
+  // src uses it: the form validates with src/lib/forms/validator.ts (ADR-0001).
   "ignoreDependencies": [
     "tailwindcss",
     "tw-animate-css",
     "@tailwindcss/typography",
     "eslint-config-prettier",
     "baseline-browser-mapping",
-    "caniuse-lite"
+    "caniuse-lite",
+    "@rjsf/validator-ajv8"
   ]
 }
