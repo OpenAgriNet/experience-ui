@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import Form from "@rjsf/core";
 import type { ErrorSchema, ErrorTransformer, RJSFValidationError, UiSchema } from "@rjsf/utils";
-import validator from "@rjsf/validator-ajv8";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useChatStore } from "@/hooks/store/chat";
 import type { FormBlock } from "@/lib/api-service";
 import { loadForm, saveForm } from "@/lib/forms/form-storage";
 import { fieldsToSchema, toFormData, toValues } from "@/lib/forms/json-schema";
+import { validator } from "@/lib/forms/validator";
 import { formRows } from "@/lib/forms/rows";
 import { ConfirmDialog, FixHint, FORM_FRAME, FormFooter } from "./form-parts";
 import { FORM_TEMPLATES, FORM_WIDGETS } from "./form-theme";
@@ -109,7 +109,7 @@ export function FormView({ form }: { readonly form: FormBlock }) {
 	);
 }
 
-/** Plain words for the farmer, in place of ajv's. */
+/** Plain words for the farmer, in place of the validator's. */
 const farmerMessages: ErrorTransformer = (errors) =>
 	errors
 		.filter((error) => error.name !== "const")

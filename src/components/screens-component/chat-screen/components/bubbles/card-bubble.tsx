@@ -9,7 +9,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { cn } from "@/lib/utils";
 import { SafeMarkdown } from "./safe-markdown";
 import { AnswerSources, formatSources, sourcesLabel } from "./answer-sources";
-// RJSF and ajv are large; only a chat that gets a form downloads them.
+// RJSF and its validator are large; only a chat that gets a form downloads them.
 const FormView = lazy(() => import("./form-view").then((m) => ({ default: m.FormView })));
 
 export function CardBubble({ message }: { readonly message: CardMessage }) {
