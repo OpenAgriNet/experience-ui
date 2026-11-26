@@ -46,6 +46,13 @@ export type FormSubmissionMessage = MessageBase & {
 	rows: FormRow[];
 };
 
+/** A button the farmer pressed on a form, such as Resend OTP. Kept out of history. */
+export type FormActionMessage = MessageBase & {
+	type: "form_action";
+	formId: string;
+	label: string;
+};
+
 type QuickRepliesMessage = MessageBase & {
 	type: "quick_replies";
 	prompt?: string;
@@ -76,4 +83,5 @@ export type ChatMessage =
 	| SystemMessage
 	| AudioMessage
 	| ImageMessage
-	| FormSubmissionMessage;
+	| FormSubmissionMessage
+	| FormActionMessage;

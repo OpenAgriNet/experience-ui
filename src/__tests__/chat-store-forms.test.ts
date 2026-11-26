@@ -253,4 +253,96 @@ describe("chat store forms", () => {
 		expect(useChatStore.getState().forms).toEqual({});
 		expect(loadForm("f-1")).toBeNull();
 	});
+
+	describe("a button pressed on a form", () => {
+		const resend = { name: "resend_init", label: "Resend OTP" };
+		const otpForm: FormBlock = {
+			type: "form",
+			formId: "f-2",
+			context: { scheme: "PM-KISAN", category: "Grievance", action: "init" },
+			fields: [{ name: "challenge.response.value", label: "Enter OTP", kind: "secret", required: true }],
+			actions: [resend]
+		};
+		const otpAsked = (text: string) =>
+			answer({
+				outcome: { status: "requires_input", cause: null },
+				content: [{ type: "text", text, citations: [] }, otpForm]
+			});
+		const offerOtpForm = async () => {
+			vi.spyOn(apiService, "sendUserQuery").mockResolvedValueOnce(otpAsked("Enter the OTP we sent."));
+			await useChatStore.getState().sendText("File my PM-KISAN grievance", "en");
+		};
+		const press = () => useChatStore.getState().pressFormAction("f-2", resend, "en");
+		const cardsWithOtpForm = () =>
+			useChatStore.getState().messages.filter((m) => m.type === "card" && m.form?.formId === "f-2");
+
+		it("sends the form back with the button's name, a new submission id and no values", async () => {
+			await offerOtpForm();
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(otpAsked("We sent a new OTP."));
+
+			await press();
+
+			expect(sentTurn().content).toEqual([
+				{
+					type: "form",
+					formId: "f-2",
+					context: otpForm.context,
+					action: "resend_init",
+					submissionId: expect.stringMatching(/^[0-9a-f-]{36}$/)
+				}
+			]);
+		});
+
+		it("shows the farmer the button they pressed", async () => {
+			await offerOtpForm();
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(otpAsked("We sent a new OTP."));
+
+			await press();
+
+			const sent = useChatStore.getState().messages.find((m) => m.type === "form_action");
+			expect(sent?.type === "form_action" && sent.label).toBe("Resend OTP");
+		});
+
+		it("opens the form offered again under the reply, and only there", async () => {
+			await offerOtpForm();
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(otpAsked("We sent a new OTP."));
+
+			await press();
+
+			expect(cardsWithOtpForm()).toHaveLength(1);
+			expect(cardsWithOtpForm()[0]).toBe(useChatStore.getState().messages.at(-1));
+			expect(useChatStore.getState().forms["f-2"]?.status).toBe("open");
+		});
+
+		it("keeps the form open where it was when the resend fails, as the first OTP may still work", async () => {
+			await offerOtpForm();
+			const offeredOn = useChatStore.getState().messages.at(-1)?.id;
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(providerDown());
+
+			await press();
+
+			expect(useChatStore.getState().forms["f-2"]?.status).toBe("open");
+			expect(cardsWithOtpForm()[0]?.id).toBe(offeredOn);
+		});
+
+		it("closes the form when the reply offers it no more", async () => {
+			await offerOtpForm();
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(
+				answer({ outcome: { status: "requires_input", cause: "no_init_pending" } })
+			);
+
+			await press();
+
+			expect(useChatStore.getState().forms["f-2"]?.status).toBe("closed");
+		});
+
+		it("sends once when pressed twice while sending", async () => {
+			await offerOtpForm();
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(otpAsked("We sent a new OTP."));
+
+			await Promise.all([press(), press()]);
+
+			expect(apiService.sendUserQuery).toHaveBeenCalledTimes(2); // the offer, then one press
+		});
+	});
 });

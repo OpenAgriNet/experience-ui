@@ -228,4 +228,32 @@ describe("form view", () => {
 			expect(container.textContent).toContain("Submitted");
 		});
 	});
+
+	describe("with buttons beside Submit", () => {
+		const resend = { name: "resend_init", label: "Resend OTP" };
+		const renderWithActions = () =>
+			act(() =>
+				root.render(<FormView form={{ ...form, actions: [resend, { name: "call_me", label: "Call me" }] }} />)
+			);
+
+		it("draws a button it knows and skips one it does not", async () => {
+			await renderWithActions();
+
+			expect(hasButton("Resend OTP")).toBe(true);
+			expect(hasButton("Call me")).toBe(false);
+		});
+
+		it("presses the button without checking or sending the fields", async () => {
+			const pressFormAction = vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined);
+			useChatStore.setState({ pressFormAction });
+			await renderWithActions();
+
+			await click("Resend OTP");
+
+			expect(pressFormAction).toHaveBeenCalledWith("f-1", resend, "en", expect.any(Function));
+			expect(submitForm).not.toHaveBeenCalled();
+			expect(container.textContent).not.toContain("This field is required.");
+			expect(document.querySelector('[role="dialog"]')).toBeNull();
+		});
+	});
 });
