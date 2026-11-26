@@ -1,6 +1,7 @@
 import { AudioBubble } from "./audio-bubble";
 import { CardBubble } from "./card-bubble";
 import { FormSubmissionBubble } from "./form-submission-bubble";
+import { FormActionBubble } from "./form-action-bubble";
 import { ChatMessage } from "./chat-types";
 import { SystemBubble } from "./system-bubble";
 import { TextBubble } from "./text-bubble";
@@ -33,6 +34,12 @@ export function Bubble({ message }: BubbleProps) {
 			return (
 				<MessageChrome role={message.role}>
 					<FormSubmissionBubble message={message} />
+				</MessageChrome>
+			);
+		case "form_action":
+			return (
+				<MessageChrome role={message.role}>
+					<FormActionBubble message={message} />
 				</MessageChrome>
 			);
 		case "system":

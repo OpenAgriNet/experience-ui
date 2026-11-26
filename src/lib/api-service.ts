@@ -54,6 +54,15 @@ export interface FormBlock {
   formId: string;
   context: FormContext;
   fields: FormField[];
+  /** Buttons beside Submit, such as Resend OTP. Left out by an older API. */
+  actions?: FormAction[];
+}
+
+/** A button on a form. `name` is an open set; the client draws only names it knows. */
+export interface FormAction {
+  name: string;
+  /** In the farmer's language. */
+  label: string;
 }
 
 export interface FormFieldError {
@@ -81,6 +90,16 @@ export interface FormSubmission {
   fields: { name: string; value: string }[];
 }
 
+/** A button pressed on a form: the form sent back with the button's name and no values. */
+export interface FormPress {
+  type: 'form';
+  formId: string;
+  context: FormContext;
+  action: string;
+  /** Made by the client, new for every press. */
+  submissionId: string;
+}
+
 /** One turn from the client. `location` is added here when the browser gave one. */
 export interface ChatTurn {
   sessionId: string;
@@ -88,7 +107,7 @@ export interface ChatTurn {
   messageId: string;
   /** A typed question. A form submission sends `content` instead. */
   query?: string;
-  content?: FormSubmission[];
+  content?: (FormSubmission | FormPress)[];
   /** Every completed exchange so far, oldest first. The API stores nothing. */
   history: HistoryItem[];
   language: { source: string; target: string };

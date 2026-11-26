@@ -8,6 +8,7 @@ import { loadForm, saveForm } from "@/lib/forms/form-storage";
 import { fieldsToSchema, toFormData, toValues } from "@/lib/forms/json-schema";
 import { validator } from "@/lib/forms/validator";
 import { formRows } from "@/lib/forms/rows";
+import { knownActions } from "@/lib/forms/actions";
 import { ConfirmDialog, FixHint, FORM_FRAME, FormFooter } from "./form-parts";
 import { FORM_TEMPLATES, FORM_WIDGETS } from "./form-theme";
 
@@ -25,6 +26,7 @@ export function FormView({ form }: { readonly form: FormBlock }) {
 	const { language, t } = useLanguage();
 	const state = useChatStore((s) => s.forms[form.formId]);
 	const submitForm = useChatStore((s) => s.submitForm);
+	const pressFormAction = useChatStore((s) => s.pressFormAction);
 
 	const [values, setValues] = useState<Record<string, string>>(() => loadForm(form.formId)?.values ?? {});
 	// A DSS error stays until the farmer changes that field.
@@ -94,7 +96,11 @@ export function FormView({ form }: { readonly form: FormBlock }) {
 				onSubmit={() => setConfirming(true)}
 			>
 				<div className="mt-4">
-					<FormFooter status={status} />
+					<FormFooter
+						status={status}
+						actions={knownActions(form)}
+						onAction={(action) => void pressFormAction(form.formId, action, language, t)}
+					/>
 				</div>
 			</Form>
 

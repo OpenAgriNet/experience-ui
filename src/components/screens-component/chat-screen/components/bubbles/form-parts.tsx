@@ -8,6 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle
 } from "@/components/ui/dialog";
+import type { FormAction } from "@/lib/api-service";
 import type { FormStatus } from "@/lib/forms/form-storage";
 import type { FormRow } from "@/lib/forms/rows";
 
@@ -22,8 +23,15 @@ export function FixHint() {
 	);
 }
 
-/** Submit while open; where the form ended up once it is not. */
-export function FormFooter({ status }: { readonly status: FormStatus }) {
+type FormFooterProps = {
+	status: FormStatus;
+	/** Buttons beside Submit that this client knows, such as Resend OTP. */
+	actions: FormAction[];
+	onAction: (action: FormAction) => void;
+};
+
+/** Submit and the form's other buttons while open; where the form ended up once it is not. */
+export function FormFooter({ status, actions, onAction }: FormFooterProps) {
 	if (status === "filed") {
 		return (
 			<p className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400">
@@ -41,14 +49,28 @@ export function FormFooter({ status }: { readonly status: FormStatus }) {
 		);
 	}
 	return (
-		<Button
-			type="submit"
-			disabled={status !== "open"}
-			className="self-start rounded-xl bg-[var(--primary)] px-6 text-white"
-		>
-			{status === "sending" && <Loader2 className="h-4 w-4 animate-spin" />}
-			{status === "sending" ? "Sending…" : "Submit"}
-		</Button>
+		<div className="flex flex-wrap items-center gap-2">
+			<Button
+				type="submit"
+				disabled={status !== "open"}
+				className="rounded-xl bg-[var(--primary)] px-6 text-white"
+			>
+				{status === "sending" && <Loader2 className="h-4 w-4 animate-spin" />}
+				{status === "sending" ? "Sending…" : "Submit"}
+			</Button>
+			{actions.map((action) => (
+				<Button
+					key={action.name}
+					type="button"
+					variant="outline"
+					disabled={status !== "open"}
+					className="rounded-xl px-6"
+					onClick={() => onAction(action)}
+				>
+					{action.label}
+				</Button>
+			))}
+		</div>
 	);
 }
 
