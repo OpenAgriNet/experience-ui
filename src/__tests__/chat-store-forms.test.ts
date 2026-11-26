@@ -314,15 +314,41 @@ describe("chat store forms", () => {
 			expect(useChatStore.getState().forms["f-2"]?.status).toBe("open");
 		});
 
-		it("keeps the form open where it was when the resend fails, as the first OTP may still work", async () => {
+		it("keeps the form open where it was when no new OTP was sent, as the first may still work", async () => {
 			await offerOtpForm();
 			const offeredOn = useChatStore.getState().messages.at(-1)?.id;
-			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(providerDown());
+			const down = providerDown();
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce({ ...down, content: [...down.content, otpForm] });
 
 			await press();
 
 			expect(useChatStore.getState().forms["f-2"]?.status).toBe("open");
+			expect(cardsWithOtpForm()).toHaveLength(1);
 			expect(cardsWithOtpForm()[0]?.id).toBe(offeredOn);
+		});
+
+		it("keeps the form open when the press never reached the API", async () => {
+			await offerOtpForm();
+			vi.mocked(apiService.sendUserQuery).mockRejectedValueOnce(new Error("offline"));
+
+			await press();
+
+			expect(useChatStore.getState().forms["f-2"]?.status).toBe("open");
+		});
+
+		it("closes the form when the press failed and the form is not offered again", async () => {
+			await offerOtpForm();
+			vi.mocked(apiService.sendUserQuery).mockResolvedValueOnce(
+				answer({
+					outcome: { status: "unavailable", cause: "internal" },
+					content: [{ type: "text", text: "Something went wrong.", citations: [] }],
+					error: { code: "internal", message: "internal", retryable: false }
+				})
+			);
+
+			await press();
+
+			expect(useChatStore.getState().forms["f-2"]?.status).toBe("closed");
 		});
 
 		it("closes the form when the reply offers it no more", async () => {

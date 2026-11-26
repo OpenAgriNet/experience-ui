@@ -356,6 +356,9 @@ function openForm(get: StoreApi<ChatStore>["getState"], formId: string): FormBlo
 	return get().forms[formId]?.status === "open" ? card?.form : undefined;
 }
 
+/** `shown`: the answer, null when it failed. `received`: the API's reply even when it failed; unset when none came. */
+type FormTurnReply = { shown: FinalAnswer | null; received?: FinalAnswer };
+
 /** Show what the farmer sent and send one form item as the turn's content. */
 async function sendFormTurn(
 	set: StoreApi<ChatStore>["setState"],
@@ -364,7 +367,7 @@ async function sendFormTurn(
 	item: FormSubmission | FormPress,
 	language: string,
 	t?: any
-): Promise<FinalAnswer | null> {
+): Promise<FormTurnReply> {
 	get().stopTTS();
 	set((state) => ({
 		messages: [...state.messages, sent],
@@ -380,10 +383,11 @@ async function sendFormTurn(
 		apiService.setSessionId(currentSession);
 	}
 
-	return streamTurn(
+	let received: FinalAnswer | undefined;
+	const shown = await streamTurn(
 		set,
-		(handlers) =>
-			apiService.sendUserQuery(
+		async (handlers) =>
+			(received = await apiService.sendUserQuery(
 				{
 					sessionId: currentSession,
 					messageId: sent.id,
@@ -392,7 +396,7 @@ async function sendFormTurn(
 					language: { source: language, target: language }
 				},
 				handlers
-			),
+			)),
 		{
 			language,
 			responseLanguage: getResponseLanguage(language),
@@ -401,6 +405,7 @@ async function sendFormTurn(
 				: "Sorry, there was an error processing your request. Please try again."
 		}
 	);
+	return { shown, received };
 }
 
 /** Record where a form stands, in the store and in its saved copy. */
@@ -745,7 +750,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			submissionId: crypto.randomUUID(),
 			fields: form.fields.map((field) => ({ name: field.name, value: (values[field.name] ?? "").trim() }))
 		};
-		const answer = await sendFormTurn(set, get, sent, submission, language, t);
+		const { shown: answer } = await sendFormTurn(set, get, sent, submission, language, t);
 
 		const rejected = answer?.content.find((item) => item.type === "form_error" && item.formId === formId);
 		if (rejected?.type === "form_error") {
@@ -767,7 +772,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 	pressFormAction: async (formId, action, language, t) => {
 		const form = openForm(get, formId);
 		if (!form) return;
-		const before = get().forms[formId] ?? { status: "open", errors: {} };
+		const before = get().forms[formId]!;
 		setFormState(set, form, { ...before, status: "sending" });
 
 		const sent: FormActionMessage = {
@@ -786,19 +791,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 			action: action.name,
 			submissionId: crypto.randomUUID()
 		};
-		const answer = await sendFormTurn(set, get, sent, press, language, t);
+		const { shown, received } = await sendFormTurn(set, get, sent, press, language, t);
 
-		const offeredAgain = answer?.content.find(
+		const offeredAgain = received?.content.find(
 			(item): item is FormBlock => item.type === "form" && item.formId === formId
 		);
-		if (offeredAgain) {
+		if (shown && offeredAgain) {
 			// Drawn on the reply already; the earlier copy goes, so one form stays open.
 			moveFormToLatestReply(set, offeredAgain);
-		} else if (!answer) {
-			// Nothing was sent, or the office was down: the code already sent may still work.
+		} else if (!received || offeredAgain) {
+			// The press never arrived, or no new code was sent: the code already sent may still work.
 			setFormState(set, form, before);
 		} else {
-			// The DSS has nothing waiting for this form any more.
+			// Nothing is waiting for this form any more, so there is nothing to resend.
 			setFormState(set, form, { status: "closed", errors: {}, asked: before.asked });
 		}
 	},
